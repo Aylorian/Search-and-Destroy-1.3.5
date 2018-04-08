@@ -1,4 +1,4 @@
-# Search-and-Destroy 1.3.5 - 7 April 2018
+# Search and Destroy 1.3.5 - 7 April 2018
 Happy new year, ninjas and other fans of mine!  I'm happy to report that 1.3.5 is a really nice update.  Without further ado, here's what's new:
 
  - The process for getting cp target data has been redesigned.  The cp type check is the primary
