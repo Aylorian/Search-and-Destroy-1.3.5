@@ -1,0 +1,1711 @@
+<?xml version="1.0" encoding="iso-8859-1"?>
+<!DOCTYPE muclient>
+<!-- Saved on Saturday, July 05, 2008, 4:46 PM -->
+<!-- MuClient version 4.31 -->
+
+<muclient>
+<plugin
+		name="WinkleWinkle_Search_Destroy_135"
+		author="WinkleWinkle, Starling"
+		id="e50b1d08a0cfc0ee9c442001"
+		language="Lua"
+		purpose="Find mobs faster"
+		date_written="2017-09-15 18:30:00"
+		requires="4.76"
+		version="1.3"
+		save_state="y"
+   >
+
+<description trim="n">
+<![CDATA[
+
+SEARCH AND DESTROY USAGE:
+
+===== AUTO NOEXP ===============>
+    > xset noexp 1000
+        - Automatically toggles "noexp" when TNL drops below 1000 and you can take a campaign
+          at your current level.
+        - If you must level before taking a campaign, it will let you level up, before stopping
+		  you below your TNL set point.
+		- If your set point is too low, you can still over-level if you get too much experience
+		  from a single kill.
+		
+    > xset noexp off, xset noexp 0
+        - Turn auto-noexp off.  If noexp is set, you must turn it off manually.
+          
+===== HUNT TRICK ===============>
+    > ht citizen       
+        - Hunt citizen, 2.citizen, 3.citizen, ... until a match (or no match) is found.
+        - Also sets "citizen" as the current target for quick kill, quick where, etc.
+        - Will fail if the mob is flagged nohunt.
+		
+    > ht 3.citizen, ht 3 citizen
+        - As above, but starting with 3.citizen.
+		
+    > ht abort, ht ab, ht 0, hta, ht0
+        - Abort a hunt trick in progress.
+		
+    > ht
+        - Typing just 'ht' will hunt-trick the current "ht", "qw", or "xcp" target.
+        
+===== AUTO HUNT ================>
+    > ah citizen       
+        - Autohunt and move towards a mob until the mob is found.
+        - Autohunt will stop if you enter combat.
+		
+    > ah 3.citizen     
+        - Autohunt 3.citizen
+        - Note: Different from hunt trick - hunts 3.mob only, NOT 4.mob, 5.mob, etc.!
+		
+    > ah abort, ah ab, ah 0, ah0         
+        - Abort an autohunt in progress.
+ 
+===== QUICK KILL=================>
+    > qk, kk, ak
+        - Attack the current "ht", "qw", or "xcp" target using "kill" or a custom command.
+		
+    > xset kill <command>
+        - Sets a custom quick-kill action, e.g. "xset attack cast 541" or "xset attack bs" and
+          quick-kill will open with that ability instead of "kill".
+ 
+===== QUICK SCAN ===============>
+    > qs               
+        - Scans for the current "ht", "qw", or "xcp" target.
+ 
+===== QUICK WHERE ==============>
+    > qw lich          
+        - "where lich" to find what room the lich is in, then generate a speedwalk to it.
+        - Use "go", "nx", "nx-", or click the hyperlink to navigate to the target room(s).
+        - Will fail if the mob is flagged no-where, and may fail if it's hidden.
+		
+    > qw               
+        - Typing just "qw" will quick-where the current "ht", "qw", or "xcp" target.
+		
+    > xw 10 guard
+        - where guard, 2.guard, 3.guard, ... ,  10.guard.
+		
+    > xw 10 20 guard
+        - where 10.guard, 11.guard, 12.guard, ... , 20.guard
+]]></description></plugin>
+
+<aliases>
+	<!-- Campaign commands -->
+	<alias 
+		match="^cp (?:c|ch|check)$"
+		script="cp_check_start"
+		enabled="y" regexp="y" sequence="100" ignore_case="y" keep_evaluating="y" send_to="12"
+		>
+		<send>
+			EnableTrigger("trg_cp_check_line", true)
+			EnableTrigger("trg_cp_check_end", true)
+		</send>
+	</alias>
+	
+	<alias 
+		match="^cp (?:i|info)$"
+		script="cp_info_start"
+		enabled="y" regexp="y" sequence="100" ignore_case="y" send_to="12"
+		>
+		<send>
+			EnableTrigger("trg_cp_info_level_taken", true)
+			EnableTrigger("trg_cp_info_targets", true)
+		</send>
+	</alias>
+	
+	<!-- Quest commands -->
+	<alias
+		match="^(?:xq|xq1)$"
+		script="xquest_1"
+		name="xquest_info"
+		enabled="y" regexp="y" sequence="100" ignore_case="y"
+		>
+	</alias>
+
+	<!-- Quick scan commands-->
+	<alias
+		match="^qs$"
+		script="quick_scan"
+		name="cmd_QuickScan"
+		enabled="y" regexp="y" sequence="100" ignore_case="y"
+		>
+	</alias>
+
+	<!-- Auto hunt commands-->
+	<alias
+		match="^ah (?<mob>.+)$"
+		script="auto_hunt"
+		name="cmd_AutoHunt"
+		enabled="y" regexp="y" sequence="100" ignore_case="y"
+		>
+	</alias>
+
+	<alias
+		match="^(?:aha|ah0)$"
+		script="auto_hunt_abort"
+		name="cmd_AutoHuntAbort_2"
+		enabled="y" regexp="y" sequence="100" ignore_case="y"
+		>
+	</alias>
+
+	<!-- Hunt trick commands -->
+	<alias
+		match="^(?<exact>x_)?ht(?!tp) ?(?:(?<index>[0-9]+)(?:[.\s]))?(?:(?<mob>.+))?$"
+		script="hunt_trick"
+		name="cmd_hunt_trick" group="HuntTrick"
+		enabled="y" regexp="y" sequence="100" ignore_case="y"
+		>
+	</alias>
+	
+	<alias
+		match="^xht (?:(?<index>[0-9]+)(?:[.\s]))?(?:(?<mob>.+))?$"
+		script="hunt_trick"
+		name="cmd_hunt_trick_2" group="HuntTrick"
+		enabled="y" regexp="y" sequence="100" ignore_case="y"
+		>
+	</alias>
+
+	<alias
+		match="^(?:hta|ht0|ht abort|ht 0)$"
+		script="hunt_trick_abort"
+		name="HuntTrickAbort_2" group="HuntTrick"
+		enabled="y" regexp="y" sequence="95" ignore_case="y"
+		>
+	</alias>	
+	
+	<!-- Quick-kill commands: qk, ak, kk, xset attack -->
+	<alias
+		match="^(?:quick kill|ak|kk|qk)$"
+		script="quick_kill"
+		name="cmd_QuickKill"
+		enabled="y" regexp="y" sequence="100" ignore_case="y"
+		>
+	</alias>
+	
+	<alias
+		match="^xset (?:kill)( (?<arg>.+))?$"
+		script="xset_quick_kill_command"
+		name="cmd_xset_quick_kill_command"
+		enabled="y" regexp="y" sequence="100" ignore_case="y"
+		>
+	</alias>
+		
+	<!-- Quick where, xwhere -->
+	<alias
+		match="^(?<exact>x_)?qw( (?:(?<index>[0-9]+)\.)?(?<mob>.+)?)?$"
+		script="quick_where_start"
+		name="cmd_QuickWhere"
+		enabled="y" regexp="y" sequence="100" ignore_case="y"
+		>
+	</alias>
+	
+	<alias
+		match="^(?:xw|xwh|xwhere)( (?<n1>\d+))?( (?<n2>\d+))?( (?<mob>.+))?$"
+		script="do_xwhere"
+		name="cmd_xwhere"
+		enabled="y" regexp="y" sequence="100" ignore_case="y"
+		>
+	</alias>
+
+	<!-- Auto noexp -->
+	<alias
+		match="^xset noexp( (?<arg>off|[0-9]+))?$"
+		script="xset_noexp_tnl"
+		name="cmd_xset_noexp_tnl"
+		enabled="y" regexp="y" sequence="100" ignore_case="y"
+		>
+	</alias>
+	
+	<!-- Page Size -->
+	<alias
+		match="^xset suspend page size$"
+		script="suspend_page_size"
+		enabled="y" regexp="y" sequence="100" ignore_case="y" 
+		>
+	</alias>
+
+	<alias
+		match="^xset resume page size$"
+		script="resume_page_size"
+		enabled="y" regexp="y" sequence="100" ignore_case="y"
+		>
+	</alias>
+	
+	<!-- debug on/off command -->
+	<alias
+		match="^sd debug$"
+		script="sd_debug"
+		name="ali_toggle_debug"
+		enabled="y" regexp="y" sequence="100" ignore_case="y"
+		>
+	</alias>
+	
+	<!-- S&D help -->
+	<alias 
+		match="^(?:ww|search|xset) help$"
+		script=""
+		name="cmd_help"
+		enabled="y" regexp="y" sequence="100" ignore_case="y" keep_evaluating="y" send_to="12"
+		>
+		<send>ColourNote("SteelBlue", "", GetPluginInfo (GetPluginID (), 3))</send>
+	</alias>
+
+</aliases>
+
+<triggers>
+	<!-- CAMPAIGN INFO PROCESSING -->
+	<trigger
+		match="^Level Taken\.\.\.\.\.\.\.\.\: \[\s+(?<level>[1-2]?[0-9][0-9]?) \]$"
+		script="cp_info_level_taken"
+		name="trg_cp_info_level_taken" group="trg_campaign"
+		enabled="n"	regexp="y" sequence="100" keep_evaluating="y" send_to="12"
+		>
+		<send>EnableTrigger("trg_cp_info_level_taken", false)</send>
+	</trigger>
+	
+	<trigger
+		match="^The targets for this campaign are\:$"
+		script=""
+		name="trg_cp_info_targets" group="trg_campaign"
+		enabled="n"	regexp="y" sequence="100" keep_evaluating="y" send_to="12"
+		>
+		<send>
+			EnableTrigger("trg_cp_info_targets", false)
+			EnableTrigger("trg_cp_info_line", true)
+			EnableTrigger("trg_cp_info_end", true)
+		</send>
+	</trigger>
+	
+	<trigger
+		match="^Find and kill 1 \* (?<mob>.+) \((?<loc>.+)\)$"
+		script="cp_info_line"
+		name="trg_cp_info_line" group="trg_campaign"
+		enabled="n"	regexp="y" sequence="100" keep_evaluating="y" send_to="12"
+		>
+	</trigger>
+
+	<trigger
+		match="^(?!Find and kill 1 \*)$"
+		script="cp_info_end"
+		name="trg_cp_info_end" group="trg_campaign"
+		enabled="n"	regexp="y" sequence="100" keep_evaluating="y" send_to="12"
+		>
+		<send>
+			EnableTrigger("trg_cp_info_line", false)
+			EnableTrigger("trg_cp_info_end", false)
+		</send>
+	</trigger>
+
+	<!-- CAMPAIGN CHECK PROCESSING -->
+	<trigger
+		match="^You still have to kill \* (?<mob>.+) \((?<loc>.+?)(?<isdead>(?: - Dead)?)\)$"
+		script="cp_check_line"
+		name="trg_cp_check_line" group="trg_campaign"
+		enabled="y"	regexp="y" sequence="100" omit_from_output="n" send_to="12"
+		>
+	</trigger>
+
+	<trigger
+		match="^(?!You still have to kill \*)"
+		script="cp_check_end"
+		name="trg_cp_check_end" group="trg_campaign"
+		enabled="n"	regexp="y" sequence="100" omit_from_output="n" send_to="12"
+		>
+		<send>
+			EnableTrigger("trg_cp_check_line", false)
+			EnableTrigger("trg_cp_check_end", false)
+		</send>
+	</trigger>
+
+	<!-- CAMPAIGN STATUS TRACKING -->
+	<trigger
+		match="^.+ tells you \'Good luck in your campaign\!\'$"
+		script="player_start_new_cp"
+		name="trg_player_start_new_cp"
+		enabled="y" regexp="y" sequence="100" keep_evaluating="y"
+		>
+	</trigger>
+	
+	<trigger
+		match="CONGRATULATIONS! You have completed your campaign."
+		script="player_not_on_cp"
+		name="trg_cp_complete"
+		enabled="y" regexp="n" sequence="100" keep_evaluating="y"
+		>
+	</trigger>
+	
+	<trigger
+		match="You are not currently on a campaign."
+		script="player_not_on_cp"
+		name="trg_not_on_cp"
+		enabled="y" regexp="n" sequence="100" keep_evaluating="y" send_to="12"
+		>
+		<send>
+			EnableTrigger("trg_cp_info_level_taken", false)
+			EnableTrigger("trg_cp_info_targets", false)
+			EnableTrigger("trg_cp_info_line", false)
+			EnableTrigger("trg_cp_info_end", false)
+			EnableTrigger("trg_cp_check_line", false)
+			EnableTrigger("trg_cp_check_end", false)
+		</send>
+	</trigger>
+	
+	<trigger
+		match="^You have (?:(?:\d+ day(?:s)?, )?\d+ hour(?:s)? and )?\d+ minute(?:s)? left to finish this campaign\.$"
+		script="player_is_on_cp"
+		name="trg_player_is_on_cp"
+		enabled="y" regexp="y" sequence="100" keep_evaluating="y" send_to="12"
+		>
+	</trigger>
+
+	<!-- HUNT TRICK -->
+	<trigger
+		match="^You are (?:almost )?certain that .+ is (?:north|south|east|west|up|down) from here\.|You are confident that .+ passed through here, heading (?:north|south|east|west|up|down)\.|The trail of .+ is confusing, but you're reasonably sure .+ headed (?:north|south|east|west|up|down)\.|There are traces of .+ having been here. Perhaps they lead (?:north|south|east|west|up|down)\?|You have no idea what you\'re doing\, but maybe .+ is (?:north|south|east|west|up|down)\?|You couldn\'t find a path to .+ from here\.|.+ is here\!$"
+		script="hunt_trick_continue"
+		name="trg_hunt_trick_continue_dir" group="HuntTrick"
+		enabled="n" regexp="y" sequence="100"
+		>
+	</trigger>
+
+	<trigger
+		match="^You are (?:almost )?certain that .+ is through .+\.|You are confident that .+ passed through here, heading through .+\.|The trail of .+ is confusing, but you're reasonably sure .+ headed through .+\.|There are traces of .+ having been here\. Perhaps they lead through .+\?|You have no idea which way .+ went\.$"
+		script="hunt_trick_continue"
+		name="trg_hunt_trick_continue_portal" group="HuntTrick"
+		enabled="n" regexp="y" sequence="100"
+		>
+	</trigger>
+	
+	<trigger
+		match="^You seem unable to hunt that target for some reason\.$"
+		script="hunt_trick_complete"
+		name="trg_hunt_trick_complete" group="HuntTrick"
+		enabled="n" regexp="y" sequence="100"
+		>
+	</trigger>
+	
+	<trigger
+		match="^.+ is here\!$"
+		script="hunt_trick_continue"
+		name="trg_hunt_trick_continue_2" group="HuntTrick"
+		enabled="n" regexp="y" sequence="100"
+		>
+	</trigger>
+
+	<trigger
+		match="^No one in this area by the name '.+'\.|No one in this area by that name\.|Not while you are fighting\!|You can't hunt while (?:resting|sitting)\.|You dream about going on a nice hunting trip, with pony rides, and campfires too\.$"
+		script="hunt_trick_abort"
+		name="trg_hunt_trick_abort" group="HuntTrick"
+		enabled="n" regexp="y" sequence="100" keep_evaluating="y"
+		>
+	</trigger>
+
+	<!--  AUTO HUNT -->
+	<trigger
+		match="^You are (?:almost )?certain that (?<mob>.+) is (?<dir>.+) from here\.$"
+		script="auto_hunt_next"
+		name="trg_autohunt_next_1" group="AutoHunt"
+		enabled="n" regexp="y" sequence="100"
+		>
+	</trigger>
+
+	<trigger
+		match="^You are confident that (?<mob>.+) passed through here\, heading (?<dir>.+)\.$"
+		script="auto_hunt_next"
+		name="trg_autohunt_next_2" group="AutoHunt"
+		enabled="n" regexp="y" sequence="100"
+		>
+	</trigger>
+
+ 	<trigger
+		match="^The trail of .+ is confusing, but you\'re reasonably sure .+ headed (?:north|south|east|west|up|down)\.|There are traces of .+ having been here\. Perhaps they lead (?:north|south|east|west|up|down)\?|You have no idea what you\'re doing, but maybe .+ is (?:north|south|east|west|up|down)\?$"
+		script="auto_hunt_lowskill"
+		name="trg_autohunt_lowskill" group="AutoHunt"
+		enabled="n" regexp="y" sequence="100"
+		>
+	</trigger>
+
+	<trigger
+		match="^You are (?:almost )?certain that .+ is through .+\.|You are confident that .+ passed through here, heading through .+\.|The trail of .+ is confusing, but you're reasonably sure .+ headed through .+\.|There are traces of .+ having been here\. Perhaps they lead through .+\?|You have no idea what you\'re doing\, but maybe .+ is through .+\?$"
+		script="auto_hunt_portal"
+		name="trg_autohunt_portal" group="AutoHunt"
+		enabled="n" regexp="y" sequence="100"
+		>
+	</trigger>
+
+	<trigger
+		match="^No one in this area by the name '.+'\.|You couldn\'t find a path to .+ from here\.|No one in this area by that name\.|Not while you are fighting\!|You can't hunt while (?:resting|sitting)\.|You dream about going on a nice hunting trip, with pony rides, and campfires too\.$"
+		script="auto_hunt_abort"
+		name="trg_autohunt_abort" group="AutoHunt"
+		enabled="n" regexp="y" sequence="100" keep_evaluating="y"
+		>
+	</trigger>
+
+	<trigger
+		match="^You seem unable to hunt that target for some reason\.$"
+		script="auto_hunt_abort"
+		name="trg_hunt_trick" group="AutoHunt"
+		enabled="n" regexp="y" sequence="100"
+		>
+	</trigger>
+	
+	<trigger
+		match="^.+ is here\!$"
+		script="auto_hunt_complete"
+		name="trg_autohunt_complete" group="AutoHunt"
+		enabled="n" regexp="y" sequence="100"
+		>
+	</trigger>
+	
+	<!-- page size -->
+	<trigger
+		match="^You currently display ([0-9]+) lines per page\.|You do not page long messages\.$"
+		script="capture_page_size"
+		name="trg_capture_page_size"
+		enabled="n" regexp="y" sequence="100" keep_evaluating="y" omit_from_output = "y"		
+		>
+	</trigger>
+	
+	<trigger
+		match="^Use 'pagesize \<lines\>' to change, or 'pagesize 0' to disable paging\.$"
+		script=""
+		name="trg_pagesize_gag_1"
+		enabled="n" regexp="y" sequence="100" keep_evaluating="y" omit_from_output = "y" send_to="12"
+		>
+		<send>EnableTrigger("trg_pagesize_gag_1", false)</send>
+	</trigger>
+	
+	<!-- WHERE TRICK -->
+	<trigger
+		match="^There is no [0-9]+\..+ around here\.$"
+		script="wt_fail"
+		name="trg_wt_fail" group="wt"
+		enabled="n" regexp="y" sequence="100"
+		>
+	</trigger>
+	
+	<trigger
+		match="^(?<mob>.{30}) (?<room>.+)$"
+		script="wt_continue"
+		name="trg_wt_continue" group="wt"
+		enabled="n" regexp="y" sequence="100"
+		>
+	</trigger>
+	
+	<!-- AUTO SET NOEXP -->
+	<trigger
+		match="^(?:You will no longer receive experience\. Happy questing\!|You will now receive experience\. Happy leveling\!)$"
+		script="noexp_manual_toggle"
+		name="trg_noexp_manual_toggle"
+		enabled="y" regexp="y" sequence="100" keep_evaluating="y"
+		>
+	</trigger>
+	
+	<trigger											 
+		match="^You (?:don't )?receive (\d+)(?:\+\d+)? experience point(?:s)?\.$"
+		script="mobkill_awards_xp"
+		name="trg_mobkill_awards_xp"
+		enabled="y" regexp="y" sequence="100" keep_evaluating="y" send_to="12"
+		>
+	</trigger>
+
+	<trigger
+		match="^You raise a level\! You are now level \d+\.$"
+		script="noexp_raise_level"
+		name="trg_noexp_raise_level"
+		enabled="y" regexp="y" sequence="100" keep_evaluating="y"
+		>
+	</trigger>
+	
+	<trigger
+		match="You may take a campaign at this level."
+		script="cp_check_noexp"
+		name="trg_cp_check_noexp"
+		enabled="y" regexp="n" sequence="100"
+		>
+	</trigger>
+
+	<trigger
+		match="You will have to level before you can go on another campaign."
+		script="new_cp_must_level"
+		name="trg_new_cp_must_level"
+		enabled="y" regexp="n" sequence="100" keep_evaluating="y"
+		>
+	</trigger>
+
+	<!-- Other triggers -->
+	<trigger
+		match="*"
+		script=""
+		name="trg_gag_all"
+		enabled="n" regexp="n" sequence="100" keep_evaluating="y" omit_from_output="y"
+		>
+	</trigger>
+</triggers>
+
+<!--  Get our standard constants -->
+<include name="constants.lua"/>
+
+<script>
+<![CDATA[
+	require "gmcphelper"
+	require "serialize"
+	require "tprint"
+	
+	local autoHuntData
+	local autoHuntMob = ""
+	local cp_type = GetVariable("mcvar_cp_type") or "none"
+	local currentRoom
+	local full_mob_name = ""
+	local HuntFoundIndex = 1
+	local dir_map = { north = "n", south = "s", east = "e", west = "w", up = "u", down = "d" }
+	local is_exact = 0
+	local quick_kill_command = GetVariable("mcvar_quick_kill_command") or "k"
+	local quest_mob = {}
+	local short_mob_name = ""
+	local showDebug = 0
+	local whereTrickFullMob = ""
+	local whereTrickIndex = 0
+	local whereTrickMob = ""
+	local whereTrickNextIndex = 0
+	local whereTrickNextMob = ""
+
+	local plugin_id_gmcp_handler = "3e7dedbe37e44942dd46d264"
+	local plugin_id_gmcp_mapper = "b6eae87ccedd84f510b74714"
+	local plugin_id_extender_gui = "3f498d929793c12cb70f5999"
+	local plugin_id_mapper_extender = "b6eae87ccedd84f510b74715"
+	local plugin_id_search_destroy = "e50b1d08a0cfc0ee9c442001"
+	
+	local sd_area_data = {
+		["A Genie's Last Wish"] = { areaid = "geniewish" },
+		["A Magical Hodgepodge"] = { areaid = "hodgepodge" },
+		["A Peaceful Giant Village"] = { areaid = "village" },
+		["Aardington Estate"] = { areaid = "aardington" },
+		["Aardwolf Zoological Park"] = { areaid = "zoo" },
+		["Adventures in Sendhia"] = { areaid = "sendhian" },
+		["Aerial City of Cineko"] = { areaid = "cineko" },
+		["Afterglow"] = { areaid = "afterglow" },
+		["Alagh, the Blood Lands"] = { areaid = "alagh" },
+		["All in a Fayke Day"] = { areaid = "fayke" },
+		["Ancient Greece"] = { areaid = "greece" },
+		["Andolor's Ocean Adventure Park"] = { areaid = "oceanpark" },
+		["Annwn"] = { areaid = "annwn" },
+		["Anthrox"] = { areaid = "anthrox" },
+		["Arisian Realm"] = { areaid = "arisian" },
+		["Art of Melody"] = { areaid = "melody" },
+		["Artificer's Mayhem"] = { areaid = "mayhem" },
+		["Ascension Bluff Nursing Home"] = { areaid = "nursing" },
+		["Atlantis"] = { areaid = "atlantis" },
+		["Avian Kingdom"] = { areaid = "avian" },
+		["Battlefields of Adaldar"] = { areaid = "adaldar" },
+		["Black Lagoon"] = { areaid = "lagoon" },
+		["Black Rose"] = { areaid = "blackrose" },
+		["Brightsea and Glimmerdim"] = { areaid = "glimmerdim" },
+		["Canyon Memorial Hospital"] = { areaid = "canyon" },
+		["Castle Vlad-Shamir"] = { areaid = "vlad" },
+		["Chaprenula's Laboratory"] = { areaid = "lab" },
+		["Child's Play"] = { areaid = "childsplay" },
+		["Christmas Vacation"] = { areaid = "xmas" },
+		["Cloud City of Gnomalin"] = { areaid = "gnomalin" },
+		["Cradlebrook"] = { areaid = "cradle" },
+		["Crossroads of Fortune"] = { areaid = "fortune" },
+		["Crynn's Church"] = { areaid = "crynn" },
+		["Dark Elf Stronghold"] = { areaid = "stronghold" },
+		["Death's Manor"] = { areaid = "manor" },
+		["Deathtrap Dungeon"] = { areaid = "deathtrap" },
+		["Den of Thieves"] = { areaid = "thieves" },
+		["Descent to Hell"] = { areaid = "hell" },
+		["Desert Doom"] = { areaid = "ddoom" },
+		["Dhal'Gora Outlands"] = { areaid = "dhalgora" },
+		["Diamond Soul Revelation"] = { areaid = "dsr" },
+		["Dortmund"] = { areaid = "dortmund" },
+		["Dread Tower"] = { areaid = "dread" },
+		["Dusk Valley"] = { areaid = "duskvalley" },
+		["Earth Plane 4"] = { areaid = "earthplane" },
+		["Elemental Chaos"] = { areaid = "elemental" },
+		["Empyrean, Streets of Downfall"] = { areaid = "empyrean" },
+		["Entrance to Hades"] = { areaid = "hades" },
+		["Eternal Autumn"] = { areaid = "autumn" },
+		["Faerie Tales II"] = { areaid = "ftii" },
+		["Faerie Tales"] = { areaid = "ft1" },
+		["Fantasy Fields"] = { areaid = "fantasy" },
+		["Foolish Promises"] = { areaid = "promises" },
+		["Fort Terramire"] = { areaid = "terramire" },
+		["Gallows Hill"] = { areaid = "gallows" },
+		["Gelidus"] = { areaid = "gelidus" },
+		["Giant's Pet Store"] = { areaid = "petstore" },
+		["Gilda And The Dragon"] = { areaid = "gilda" },
+		["Gnoll's Quarry"] = { areaid = "quarry" },
+		["Gold Rush"] = { areaid = "goldrush" },
+		["Guardian's Spyre of Knowledge"] = { areaid = "spyreknow" },
+		["Gypsy Caravan"] = { areaid = "caravan" },
+		["Halls of the Damned"] = { areaid = "damned" },
+		["Hatchling Aerie"] = { areaid = "hatchling" },
+		["Hedgehogs' Paradise"] = { areaid = "hedge" },
+		["Helegear Sea"] = { areaid = "helegear" },
+		["Hotel Orlando"] = { areaid = "orlando" },
+		["House of Cards"] = { areaid = "cards" },
+		["Icefall"] = { areaid = "icefall" },
+		["Imagi's Nation"] = { areaid = "imagi" },
+		["Imperial Nation"] = { areaid = "imperial" },
+		["Insanitaria"] = { areaid = "insan" },
+		["Into the Long Night"] = { areaid = "longnight" },
+		["Intrigues of Times Past"] = { areaid = "times" },
+		["Island of Lost Time"] = { areaid = "losttime" },
+		["Jenny's Tavern"] = { areaid = "jenny" },
+		["Jotunheim"] = { areaid = "jotun" },
+		["Jungles of Verume"] = { areaid = "verume" },
+		["Keep of the Kobaloi"] = { areaid = "kobaloi" },
+		["Kerofk"] = { areaid = "kerofk" },
+		["Ketu Uplands"] = { areaid = "ketu" },
+		["Kiksaadi Cove"] = { areaid = "cove" },
+		["Kimr's Farm"] = { areaid = "farm" },
+		["Kingdom of Ahner"] = { areaid = "ahner" },
+		["Kingsholm"] = { areaid = "kingsholm" },
+		["Kobold Siege Camp"] = { areaid = "siege" },
+		["Kul Tiras"] = { areaid = "kultiras" },
+		["Land of Legend"] = { areaid = "legend" },
+		["Living Mines of Dak'Tai"] = { areaid = "livingmine" },
+		["Masquerade Island"] = { areaid = "masq" },
+		["Mount duNoir"] = { areaid = "dunoir" },
+		["Mudwog's Swamp"] = { areaid = "mudwog" },
+		["Nanjiki Ruins"] = { areaid = "nanjiki" },
+		["Nebulous Horizon"] = { areaid = "horizon" },
+		["Necromancers' Guild"] = { areaid = "necro" },
+		["Nenukon and the Far Country"] = { areaid = "nenukon" },
+		["New Thalos"] = { areaid = "newthalos" },
+		["Northstar"] = { areaid = "northstar" },
+		["Nottingham"] = { areaid = "nottingham" },
+		["Olde Worlde Carnivale"] = { areaid = "carnivale" },
+		["Onyx Bazaar"] = { areaid = "bazaar" },
+		["Paradise Lost"] = { areaid = "paradise" },
+		["Plains of Nulan'Boar"] = { areaid = "nulan" },
+		["Pompeii"] = { areaid = "pompeii" },
+		["Prosper's Island"] = { areaid = "prosper" },
+		["Qong"] = { areaid = "qong" },
+		["Radiance Woods"] = { areaid = "radiance" },
+		["Raganatittu"] = { areaid = "raga" },
+		["Realm of Deneria"] = { areaid = "deneria" },
+		["Realm of the Firebird"] = { areaid = "firebird" },
+		["Realm of the Sacred Flame"] = { areaid = "firenation" },
+		["Realm of the Zodiac"] = { areaid = "zodiac" },
+		["Rebellion of the Nix"] = { areaid = "rebellion" },
+		["Rosewood Castle"] = { areaid = "rosewood" },
+		["Sagewood Grove"] = { areaid = "sagewood" },
+		["Sanctity of Eternal Damnation"] = { areaid = "sanctity" },
+		["Sen'narre Lake"] = { areaid = "sennarre" },
+		["Seven Wonders"] = { areaid = "wonders" },
+		["Sheila's Cat Sanctuary"] = { areaid = "cats" },
+		["Sho'aram, Castle in the Sand"] = { areaid = "sandcastle" },
+		["Siren's Oasis Resort"] = { areaid = "sirens" },
+		["Snuckles Village"] = { areaid = "snuckles" },
+		["Storm Mountain"] = { areaid = "storm" },
+		["Storm Ships of Lem-Dagor"] = { areaid = "lemdagor" },
+		["Sundered Vale"] = { areaid = "vale" },
+		["Swordbreaker's Hoard"] = { areaid = "hoard" },
+		["Tairayden Peninsula"] = { areaid = "peninsula" },
+		["Tai'rha Laym"] = { areaid = "laym" },
+		["Takeda's Warcamp"] = { areaid = "takeda" },
+		["Tanra'vea"] = { areaid = "tanra" },
+		["Thandeld's Conflict"] = { areaid = "conflict" },
+		["The Abyssal Caverns of Sahuagin"] = { areaid = "sahuagin" },
+		["The Amazon Nation"] = { areaid = "amazon" },
+		["The Amusement Park"] = { areaid = "amusement" },
+		["The Archipelago of Entropy"] = { areaid = "entropy" },
+		["The Astral Travels"] = { areaid = "astral" },
+		["The Aylorian Academy"] = { areaid = "academy" },
+		["The Blighted Tundra of Andarin"] = { areaid = "andarin" },
+		["The Blood Opal of Rauko'ra"] = { areaid = "raukora" },
+		["The Blood Sanctum"] = { areaid = "sanctum" },
+		["The Broken Halls of Horath"] = { areaid = "horath" },
+		["The Call of Heroes"] = { areaid = "callhero" },
+		["The Cataclysm"] = { areaid = "cataclysm" },
+		["The Chasm and The Catacombs"] = { areaid = "chasm" },
+		["The Chessboard"] = { areaid = "chessboard" },
+		["The Continent of Mesolar"] = { areaid = "mesolar" },
+		["The Coral Kingdom"] = { areaid = "coral" },
+		["The Cougarian Queendom"] = { areaid = "cougarian" },
+		["The Council of the Wyrm"] = { areaid = "wyrm" },
+		["The Covenant of Mistridge"] = { areaid = "mistridge" },
+		["The Cracks of Terra"] = { areaid = "terra" },
+		["The Curse of the Midnight Fens"] = { areaid = "fens" },
+		["The Dark Continent, Abend"] = { areaid = "abend" },
+		["The Dark Temple of Zyian"] = { areaid = "zyian" },
+		["The DarkLight"] = { areaid = "darklight" },
+		["The Darkside of the Fractured Lands"] = { areaid = "darkside" },
+		["The Deadlights"] = { areaid = "deadlights" },
+		["The Desert Prison"] = { areaid = "desert" },
+		["The Drageran Empire"] = { areaid = "drageran" },
+		["The Dungeon of Doom"] = { areaid = "dundoom" },
+		["The Earth Lords"] = { areaid = "earthlords" },
+		["The Eighteenth Dynasty"] = { areaid = "dynasty" },
+		["The Empire of Aiighialla"] = { areaid = "empire" },
+		["The Empire of Talsa"] = { areaid = "talsa" },
+		["The Fabled City of Stone"] = { areaid = "stone" },
+		["The Fire Swamp"] = { areaid = "fireswamp" },
+		["The First Ascent"] = { areaid = "ascent" },
+		["The Flying Citadel"] = { areaid = "citadel" },
+		["The Forest of Li'Dnesh"] = { areaid = "lidnesh" },
+		["The Fractured Lands"] = { areaid = "fractured" },
+		["The Gathering Horde"] = { areaid = "gathering" },
+		["The Gauntlet"] = { areaid = "gauntlet" },
+		["The Gladiator's Arena"] = { areaid = "arena" },
+		["The Glamdursil"] = { areaid = "glamdursil" },
+		["The Goblin Fortress"] = { areaid = "fortress" },
+		["The Grand City of Aylor"] = { areaid = "aylor" },
+		["The Graveyard"] = { areaid = "graveyard" },
+		["The Great City of Knossos"] = { areaid = "knossos" },
+		["The Great Salt Flats"] = { areaid = "salt" },
+		["The Icy Caldera of Mauldoon"] = { areaid = "caldera" },
+		["The Imperial City of Reme"] = { areaid = "reme" },
+		["The Infestation"] = { areaid = "infest" },
+		["The Keep of Kearvek"] = { areaid = "kearvek" },
+		["The Killing Fields"] = { areaid = "fields" },
+		["The Labyrinth"] = { areaid = "labyrinth" },
+		["The Land of Oz"] = { areaid = "landofoz" },
+		["The Land of the Beer Goblins"] = { areaid = "beer" },
+		["The Lower Planes"] = { areaid = "lplanes" },
+		["The Maelstrom"] = { areaid = "maelstrom" },
+		["The Marshlands of Agroth"] = { areaid = "agroth" },
+		["The Misty Shores of Yarr"] = { areaid = "yarr" },
+		["The Monastery"] = { areaid = "monastery" },
+		["The Mountains of Desolation"] = { areaid = "desolation" },
+		["The Nine Hells"] = { areaid = "ninehells" },
+		["The Nyne Woods"] = { areaid = "nynewoods" },
+		["The Old Cathedral"] = { areaid = "cathedral" },
+		["The Palace of Song"] = { areaid = "songpalace" },
+		["The Partroxis"] = { areaid = "partroxis" },
+		["The Path of the Believer"] = { areaid = "believer" },
+		["The Realm of Infamy"] = { areaid = "infamy" },
+		["The Realm of the Hawklords"] = { areaid = "hawklord" },
+		["The Relinquished Tombs"] = { areaid = "tombs" },
+		["The Reman Conspiracy"] = { areaid = "remcon" },
+		["The Ruins of Diamond Reach"] = { areaid = "ruins" },
+		["The Ruins of Stormhaven"] = { areaid = "stormhaven" },
+		["The Sanguine Tavern"] = { areaid = "sanguine" },
+		["The Scarred Lands"] = { areaid = "scarred" },
+		["The School of Horror"] = { areaid = "soh" },
+		["The Shadows of Minos"] = { areaid = "minos" },
+		["The Silver Volcano"] = { areaid = "volcano" },
+		["The Slaughter House"] = { areaid = "slaughter" },
+		["The Southern Ocean"] = { areaid = "southern" },
+		["The Stuff of Shadows"] = { areaid = "stuff" },
+		["The Temple of Shal'indrael"] = { areaid = "temple" },
+		["The Temple of Shouggoth"] = { areaid = "shouggoth" },
+		["The Three Pillars of Diatz"] = { areaid = "diatz" },
+		["The Titans' Keep"] = { areaid = "titan" },
+		["The Tournament of Illoria"] = { areaid = "illoria" },
+		["The Town of Solan"] = { areaid = "solan" },
+		["The Tree of Life"] = { areaid = "tol" },
+		["The Trouble with Gwillimberry"] = { areaid = "gwillim" },
+		["The Uncharted Oceans"] = { areaid = "uncharted" },
+		["The UnderDark"] = { areaid = "underdark" },
+		["The Upper Planes"] = { areaid = "uplanes" },
+		["The Uprising"] = { areaid = "uprising" },
+		["The Were Wood"] = { areaid = "werewood" },
+		["The Witches of Omen Tor"] = { areaid = "omentor" },
+		["The Wobbly Woes of Woobleville"] = { areaid = "wooble" },
+		["The Wood Elves of Nalondir"] = { areaid = "woodelves" },
+		["The Yurgach Domain"] = { areaid = "yurgach" },
+		["Tir na nOg"] = { areaid = "tirna" },
+		["Tournament Camps"] = { areaid = "camps" },
+		["Tribal Origins"] = { areaid = "origins" },
+		["Tumari's Diner"] = { areaid = "diner" },
+		["Umari's Castle"] = { areaid = "umari" },
+		["Unearthly Bonds"] = { areaid = "bonds" },
+		["Verdure Estate"] = { areaid = "verdure" },
+		["Vidblain, the Ever Dark"] = { areaid = "vidblain" },
+		["War of the Wizards"] = { areaid = "wizards" },
+		["Warrior's Training Camp"] = { areaid = "wtc" },
+		["Wayward Alehouse"] = { areaid = "alehouse" },
+		["Weather Observatory"] = { areaid = "weather" },
+		["Wedded Bliss"] = { areaid = "bliss" },
+		["Wildwood"] = { areaid = "wildwood" },
+		["Winds of Fate"] = { areaid = "winds" },
+		["Winterlands"] = { areaid = "winter" },
+		["Xyl's Mosaic"] = { areaid = "xylmos" },
+		["Yggdrasil: The World Tree"] = { areaid = "ygg" },
+		["Zangar's Demonic Grotto"] = { areaid = "zangar" },
+	}
+
+	
+-------------- INSTALLATION ------------------
+	function OnPluginInstall()
+		ColourNote("SteelBlue", "", "\n+=======================================================+")
+		ColourNote("SteelBlue", "", "+ Search and Destroy v1.3.5 installed successfully.     +")
+		ColourNote("SteelBlue", "", "+=======================================================+\n")
+		Execute("cp info")
+	end
+
+-- ********** QUEST INFO PROCESSING **********	
+	function xquest_1()
+		Send_GMCP_Packet("request quest")
+	end
+	
+-- ********** CAMPAIGN INFO PROCESSING **********
+	local cpInfoIndex = 1
+	local cp_level_taken = tonumber(GetVariable("mcvar_cp_level_taken")) or 0
+	local cpInfoTargets = {}
+	
+	function cp_info_start()
+		cpInfoTargets = {}
+		cpInfoIndex = 1
+		Send("cp info")
+	end
+	
+	function cp_info_level_taken(name, line, wildcards)
+		cp_level_taken = tonumber(wildcards.level)
+		SetVariable("mcvar_cp_level_taken", cp_level_taken)
+		BroadcastPlugin(676, cp_level_taken)
+		--print(cp_level_taken)
+	end
+	
+	function cp_info_line(name, line, wildcards)
+		local mobname = wildcards.mob
+		local location = wildcards.loc
+		local keyword = guess_mob_name(mobname, false)
+		cpInfoTargets[cpInfoIndex] = { mob = mobname, loc = location, kw = keyword, ord = cpInfoIndex}
+		cpInfoIndex = cpInfoIndex + 1
+	end
+	
+	function cp_info_end()
+		cp_info_type_check()
+		--for i,v in ipairs (cpInfoTargets) do
+		--	print(v.mob .. "   " .. sd_area_data[v.loc].areaid)
+		--end
+	end
+
+	function cp_info_type_check()
+		local cp_list = cpInfoTargets
+		local list_items = #cp_list
+		local areaCount = 0
+		local roomCount = 0
+		for i,v in ipairs (cp_list) do
+			if sd_area_data[v.loc] then
+				areaCount = areaCount + 1
+			else
+				roomCount = roomCount + 1
+			end
+		end
+		if areaCount >= roomCount then
+			cp_type = "area"
+		else
+			cp_type = "room"
+		end
+		SetVariable("mcvar_cp_type", cp_type)
+		BroadcastPlugin(675, cp_type)
+		print("sd cp type: " .. cp_type .. "\n")
+		return cp_type
+	end
+
+-- ********** CAMPAIGN CHECK PROCESSING **********
+	local cp_check_list = {}
+	local cp_check_index = 1
+	
+	function cp_check_start()
+		--SendNoEcho("cp ch")
+		cp_check_list = {}
+		cp_check_index = 1
+	end
+	
+	function cp_check_line(name, line, wildcards)
+		local mob = wildcards.mob
+		local loc = wildcards.loc
+		local is_dead = (wildcards.isdead == "" and "no" or "yes")
+		--print("mob: " .. mob .. "   loc: " .. loc .. "   dead: " .. is_dead)
+		cp_check_list[cp_check_index] =  { mob = mob, loc = loc, is_dead = is_dead, ord = cp_check_index}
+		cp_check_index = cp_check_index + 1
+	end
+	
+	function cp_check_end()
+		--tprint(cp_check_list)
+	end
+
+	
+-- ********** xwhere - locate multiple mobs at once **********
+	function do_xwhere(name, line, wildcards)
+		local n1 = tonumber(wildcards.n1) or ""
+		local n2 = tonumber(wildcards.n2) or ""
+		local mob = wildcards.mob or ""
+		if (n1 == "") or (mob == "") then						-- user entered no numbers, no mobname, or no args at all
+			ColourNote("#FF5000", "", "\nSearch and Destroy: 'xwhere' required parameter missing.")
+			ColourNote("#FF5000", "", "            Syntax: 'xwhere <n1> <mobname>' or 'xwhere <n1> <n2> <mobname>'\n")
+			return
+		elseif (n1 ~= "") and (mob ~= "") and (n2 == "") then	-- user entered one number (n1) and a mobname, but no second number (n2)
+			ColourNote("#40C040", "", "\nSearch and Destroy: 'xwhere" .. " " .. n1 .. " " .. mob .. "'")
+			for i = 1, n1, 1 do
+				if (i == 1) then
+					Send("where " .. mob)
+				else
+					Send("where " .. i .. "." .. mob)
+				end
+			end
+		elseif (n1 ~= "") and (mob ~= "") and (n2 ~= "") then	-- user entered n1, n2, and mobname
+			ColourNote("#40C040", "", "Search and Destroy: 'xwhere" .. " " .. n1 .. " " .. n2 .. " " .. mob .. "'")
+			for i = n1, n2, 1 do
+				if (i == 1) then
+					Send("where " .. mob)
+				else
+					Send("where " .. i .. "." .. mob)
+				end
+			end
+		else
+			ColourNote("#FF1000", "", "Search and Destroy: 'xwhere' data entry problem!")
+		end
+	end
+
+--	********** Auto noexp functions **********
+	local auto_noexp_tnl = tonumber(GetVariable("mcvar_auto_noexp_tnl")) or 0			-- determines whether auto 'noexp' is on or off.  "0" is off, any other number means it's on and sets the TNL limit. 
+	local noexp_onoff = "off"			-- is 'noexp' on or off?
+	local player_on_cp = "no"			-- is player on a cp?
+	local new_cp_current_level = "yes"	-- can player take a new cp at the current level?
+	
+	function xset_noexp_tnl(name, line, wildcards)		-- called by alias: "xset noexp" when argument given
+		if (wildcards.arg == "") then
+			if (auto_noexp_tnl == 0) then
+				ColourNote("#FF5000", "", "Search and Destroy: Auto 'noexp' is currently OFF.")
+			else
+				ColourNote("#FF5000", "", "Search and Destroy: Auto 'noexp' is ON and set to " .. auto_noexp_tnl .. " TNL.\n")
+			end
+		elseif (wildcards.arg == "off") or (wildcards.arg == "0") then	-- "xset noexp off" and "xset noexp 0" turn auto-noexp off.
+			EnableTrigger("trg_cp_check_noexp", false)
+			EnableTrigger("trg_mobkill_awards_xp", false)
+			auto_noexp_tnl = 0
+			SetVariable("mcvar_auto_noexp_tnl", auto_noexp_tnl)
+			ColourNote("#FF5000", "", "\nSearch and Destroy: Auto 'noexp' is now OFF.\n")
+		else											-- xset with any other (positive) number turns auto-noexp on.
+			EnableTrigger("trg_cp_check_noexp", true)
+			EnableTrigger("trg_mobkill_awards_xp", true)
+			auto_noexp_tnl = tonumber(wildcards.arg)
+			SetVariable("mcvar_auto_noexp_tnl", auto_noexp_tnl)
+			ColourNote("#FF5000", "", "\nSearch and Destroy: Auto 'noexp' now set to " .. auto_noexp_tnl .. " TNL.\n")
+		end
+	end
+
+	function set_noexp(on_off)
+		if (on_off == "on") or (on_off == "off") then
+			noexp_onoff = on_off
+			Send_GMCP_Packet("config noexp " .. on_off)
+		end
+	end
+	
+	function cp_check_noexp()		-- called by line 'You may take campaign this level.' in 'cp check'
+		new_cp_current_level = "yes"
+		if (auto_noexp_tnl > 0) then	-- if auto_noexp_tnl is greater than zero, then auto-noexp is on.
+			local tnl = tonumber(gmcp("char.status.tnl"))
+			if (tnl < auto_noexp_tnl) and (noexp_onoff == "off") then		-- tnl less than set point and noexp is off --> turn that shit on
+				set_noexp("on")
+				ColourNote("#FF5000", "", "\nSearch and Destroy: Turning 'noexp' ON (Your TNL is less than " .. auto_noexp_tnl .. ")")
+			elseif (tnl > auto_noexp_tnl) and (noexp_onoff == "on") then	-- if over min TNL and noexp is on --> turn noexp off regardless
+				set_noexp("off")
+				ColourNote("#FF5000", "", "\nSearch and Destroy: Turning 'noexp' OFF (your TNL is greater than " .. auto_noexp_tnl .. ")")
+			end
+		else 	-- feature is turned off, just show reminder
+			auto_noexp_tnl = 0
+			ColourNote("#FF5000", "#000000", "Automatic 'noexp' is currently turned OFF.\n")
+		end
+	end
+	
+	function mobkill_awards_xp(name, line, wildcards)	-- called when mob kill awards xp
+		if (auto_noexp_tnl > 0) then
+			DoAfterSpecial(0.2, "check_current_tnl()", 12)
+		end
+	end
+
+	function check_current_tnl(name, line, wildcards)	-- called via timer set by function mobkill_awards_xp
+		local tnl = tonumber(gmcp("char.status.tnl"))
+		if (new_cp_current_level == "yes") then
+			if (tnl < auto_noexp_tnl) then
+				if (noexp_onoff == "off") then
+					set_noexp("on")
+					ColourNote("#FF5000", "#000000", "Search and Destroy: Turning 'noexp' ON (your TNL is less than " .. auto_noexp_tnl .. ")")
+				end
+			else
+				if (noexp_onoff == "on") then
+					set_noexp("off")
+					ColourNote("#FF5000", "#000000", "Search and Destroy: Turning 'noexp' OFF (your TNL is greater than " .. auto_noexp_tnl .. ")")
+				end
+			end
+		else
+			if (noexp_onoff == "on") then
+				set_noexp("off")
+				ColourNote("#FF5000", "#000000", "Search and Destroy: Turning 'noexp' OFF (you must level before taking a new campaign)")
+			end
+		end
+	end
+	
+	function noexp_raise_level()	-- called when player raises a level
+		new_cp_current_level = "yes"
+	end
+	
+	function player_start_new_cp()	-- called by line "good luck on your campaign" when starting new cp
+		player_on_cp = "yes"
+		new_cp_current_level = "no"
+		if (noexp_onoff == "on") and (auto_noexp_tnl > 0) then
+			ColourNote("#FF5000", "#000000", "Search and Destroy: Turning 'noexp' OFF (you have started a new CP)")
+			set_noexp("off")
+		end
+		Execute("cp info")
+		DoAfterSpecial(1.0, "cp ch", sendto.execute)
+	end
+
+	function new_cp_must_level()	-- called by trigger:  You must level to get a new campaign
+		new_cp_current_level = "no"
+		if (auto_noexp_tnl > 0) then
+			if (noexp_onoff == "on") and (player_on_cp == "yes") then			
+				ColourNote("#FF5000", "#000000", "Search and Destroy: Turning noexp OFF (can't take new CP at current level)")
+				set_noexp("off")
+			end
+		end
+	end
+	
+	function player_is_on_cp()
+		player_on_cp = "yes"
+	end
+	
+	function player_not_on_cp()
+		cpInfoTargets = {}
+		cpInfoIndex = 1
+		cp_check_list = {}
+		cp_check_index = 1
+		player_on_cp = "no"
+		cp_type = "none"
+		SetVariable("mcvar_cp_type", cp_type)
+	end
+	
+	function noexp_manual_toggle()
+		Send_GMCP_Packet("config noexp")
+	end
+-- end of auto noexp feature
+
+	function xset_quick_kill_command(name, line, wildcards)		-- user-defined attack to use with qk/kk
+		if (wildcards.arg == "") then
+			ColourNote("#FF5000", "", "Search and Destroy: Quick-kill command currently set to: " .. quick_kill_command)
+		else
+			quick_kill_command = wildcards.arg
+			SetVariable("mcvar_quick_kill_command", quick_kill_command)
+			ColourNote("#FF5000", "", "Search and Destroy: Quick-kill command is now set to: " .. quick_kill_command)
+		end
+	end
+
+	function quick_run(name, line, wildcards)
+		local number = tonumber(wildcards.num)
+		local dir = wildcards.dir
+		for i=1,number,1 do
+			Send(dir)
+		end
+	end
+	
+	function set_short_mob_name(mobName, callingId)
+		if (callingId == nil) then
+			callingId = ""
+		else
+			callingId = callingId .. ":"
+		end
+		DebugNote("set_short_mob_name:" .. tostring(callingId) .. "," .. tostring(mobName))
+		short_mob_name = mobName
+	end
+	
+	function get_short_mob_name()	
+		DebugNote("get_short_mob_name:" .. tostring(short_mob_name))
+		return short_mob_name
+	end
+
+	function set_full_mob_name(mobName, callingId)
+		if (callingId == nil) then
+			callingId = ""
+		else
+			callingId = callingId .. ":"
+		end
+		DebugNote("set_full_mob_name:" .. tostring(callingId) .. "," .. tostring(mobName))
+		full_mob_name = mobName
+	end
+	
+	function get_full_mob_name()	
+		DebugNote("get_full_mob_name:" .. tostring(full_mob_name))
+		return full_mob_name
+	end
+	
+	function set_is_exact(isExact, callingId)
+		if (callingId == nil) then
+			callingId = ""
+		else
+			callingId = callingId .. ":"
+		end
+		DebugNote("set_is_exact:" .. callingId .. isExact)
+		is_exact = isExact
+	end
+	
+	function get_is_exact()	
+		DebugNote("get_is_exact:" .. is_exact)
+		return is_exact
+	end	
+	
+	function quick_scan(name, line, wildcards)
+		DebugNote("quick_scan:" .. get_short_mob_name())
+		if (get_short_mob_name() == nil or get_short_mob_name() == "") then
+			Send("scan")
+		else
+			Send(string.format("scan %s", get_short_mob_name()))
+		end
+	end
+
+	function quick_kill(name, line, wildcards)
+		if (get_short_mob_name() == nil or get_short_mob_name() == "") then
+			ColourNote("#FF5000", "", "\nSearch and Destroy: 'Quick-kill' has no target.  Use 'ht', 'qw', or 'xcp' to select a target.\n")
+		else
+			Execute(quick_kill_command .. " " .. get_short_mob_name())
+		end
+	end
+
+	local qw = {
+			full_name = "",
+			short_name = "",
+			result_match_name = "",
+			exact = 1,
+			index = 1
+		}
+	
+	function quick_where_start(name, line, wildcards)
+		if (wildcards.mob == "") then
+			qw.full_name = get_full_mob_name()
+			qw.result_match_name = get_full_mob_name()
+			qw.short_name = get_short_mob_name()
+			if (qw.full_name == nil or qw.full_name == "") then
+				ColourNote("#FF5000", "", "\nSearch and Destroy: 'Quick-where' has no target.  Use 'ht <mob name>', 'qw <mob name>, or 'xcp' to select a target.\n")
+				return
+			else
+				Note("\nSearch and Destroy: Using last quick-where mob...\n")
+			end
+			qw.exact = get_is_exact()
+			qw.index = 1
+		else
+			qw.full_name = wildcards.mob
+			qw.result_match_name = wildcards.mob
+			qw.short_name = wildcards.mob
+			-- set exact
+			if (wildcards.exact ~= "") then
+				qw.exact = 1
+			else
+				qw.exact = 0
+			end
+			-- set index
+			if (wildcards.index == "") then
+				qw.index = 1
+			else
+				qw.index = tonumber(wildcards.index)
+			end
+		end
+		-- set exact
+		if (qw.exact == 1) then
+			qw.short_name = guess_mob_name(qw.full_name)
+		else
+			qw.result_match_name = split(guess_mob_name(qw.full_name), "[^ ]+")[1]
+		end
+		-- limit to 30 chars
+		qw.result_match_name = string.sub(qw.result_match_name, 1, 30)
+		set_full_mob_name(qw.full_name, "quick_where_start")
+		set_short_mob_name(qw.short_name, "quick_where_start")		
+		set_is_exact(qw.exact, "quick_where_start")
+		DebugNote("qw data - " .. serialize.save_simple(qw))
+		create_quick_where_trigger(qw.result_match_name)
+		if (qw.index == 1 ) then	-- don't use 1.mob
+			Execute(string.format("where %s", qw.short_name))
+		else
+			Execute(string.format("where %s.%s", qw.index, qw.short_name))
+		end
+	end
+	
+	function create_quick_where_trigger(mobName)
+		DeleteTrigger("QuickWhereTrigger")
+		--local match = string.format("(?=.*%s.*)^(?<mob>.{30}) (?<room>.+)$", string.sub(mobName, 1, 30))
+		local match = "^(?<mob>.{30}) (?<room>.+)$"
+		DebugNote(match)
+		AddTriggerEx(
+			"QuickWhereTrigger", 
+			match, 
+			"", 
+			eEnabled + eKeepEvaluating + eIgnoreCase + eTriggerRegularExpression + eReplace + eTemporary, 
+			-1, 
+			0, 
+			"", 
+			"quick_where_match", 
+			12, 
+			20)	
+	end
+
+	function quick_where_match(name, line, wildcards)
+		DebugNote(name .. ": " .. serialize.save_simple(wildcards))
+		if (string.find(line, "There is no", 1, true) ~= nil) then
+			DebugNote(" a 'There is no' line")
+			return
+		end
+		local mobName = string.lower(trim(wildcards.mob))
+		local parts = split(string.lower(qw.short_name), "[^ ]+")
+		local found = false
+		for index = 1, #parts do
+			DebugNote("Does '" .. mobName .. "' contain '" .. parts[index] .. "'")
+			if (string.find(mobName, parts[index], 1, true) ~= nil) then
+				DebugNote("    yes!")
+				found = true
+				break -- leave loop
+			else
+				DebugNote("    no.")
+			end
+		end
+		if (found == false) then	-- not our line, keep looking
+			return
+		end
+		EnableTrigger("QuickWhereTrigger", false)
+		DeleteTrigger("QuickWhereTrigger")
+		if (IsPluginInstalled(plugin_id_mapper_extender) and GetPluginInfo(plugin_id_mapper_extender, 17)) then	-- Does WinkleWinkle_Mapper_Extender plugin exist and is enabled?
+			DebugNote("qw_match:" .. qw.full_name)
+			local cmd = "xm {" .. qw.full_name .. "} " .. wildcards.room
+			DebugNote(cmd)
+			Execute(cmd)
+		else
+			Execute("mapper list " .. wildcards.room)
+		end
+	end
+
+--	****** HUNT TRICK FUNCTIONS ******
+	local ht = {
+			full_name = "",
+			short_name = "",
+			exact = 1,
+			index = 1
+		}
+
+	function hunt_trick(name, line, wildcards)
+		EnableTriggerGroup("AutoHunt", false)
+		EnableTriggerGroup("HuntTrick", true)
+		local index
+		if (wildcards.mob == "") then
+			ht.exact = get_is_exact()
+			ht.full_name = get_full_mob_name()
+			ht.full_name = get_short_mob_name()
+			if (ht.full_name == nil or ht.full_name == "") then
+				ColourNote("#FF5000", "", "Search and Destroy: Hunt-trick has no target.")
+				return
+			end
+			ht.index = 1
+		else
+			if (wildcards.exact == "x_") then
+				ht.exact = 1
+			else
+				ht.exact = 0
+			end
+			set_is_exact(ht.exact, "hunt_trick")
+			if (wildcards.index == "") then
+				ht.index = 1
+			else
+				ht.index = tonumber(wildcards.index)
+			end
+			ht.full_name = wildcards.mob
+			ht.short_name = wildcards.mob
+			set_full_mob_name(ht.full_name, "hunt_trick")
+			if (ht.exact == 1) then
+				local guess = guess_mob_name(ht.full_name, true)
+				ht.short_name = guess		
+			end
+			set_short_mob_name(ht.short_name, "hunt_trick")			
+		end			
+		DebugNote("ht data - " .. serialize.save_simple(ht))
+		do_hunt_trick()
+	end
+
+ 	function hunt_trick_abort(name, line, wildcards)
+		EnableTriggerGroup("HuntTrick", false)
+		ColourNote("#FF5000", "", "Search and Destroy: Aborting Hunt Trick.")
+	end
+
+ 	function hunt_trick_continue(name, line, wildcards)
+		DebugNote("hunt_trick_continue()")
+		ht.index = ht.index + 1
+		if (ht.index > 0 and ht.short_name ~= "") then
+			do_hunt_trick()
+		end
+ 	end
+
+ 	function hunt_trick_complete(name, line, wildcards)
+		DebugNote("hunt_trick_complete:" .. ht.index .. "." .. ht.short_name .. ":" .. ht.exact)
+		EnableTriggerGroup("AutoHunt", false)
+		EnableTriggerGroup("HuntTrick", false)
+		if (ht.index > 0 and get_short_mob_name() ~= "") then
+			local exact = ""
+			local qw_name = get_short_mob_name()
+			if (ht.exact == 1) then
+				exact = "x_"
+				qw_name = get_full_mob_name()
+			end
+			HuntFoundIndex = ht.index
+			if (ht.index == 1) then		-- Don't use "1.mob"
+				Execute(string.format("%sqw %s", exact, qw_name))
+			else
+				Execute(string.format("%sqw %s.%s", exact, ht.index, qw_name))
+			end
+		end
+ 	end
+
+	function do_hunt_trick()	-- this function is never called by trigger.  It is only called from other hunt trick functions.
+		DebugNote("do_hunt_trick:" .. ht.index .. ":" .. get_short_mob_name())
+		if (ht.index > 0 and get_short_mob_name() ~= "") then
+			local hunt
+			if (ht.index == 1) then
+				hunt = string.format("hunt %s", get_short_mob_name())		-- Don't hunt 1.mob
+			else
+				hunt = string.format("hunt %d.%s", ht.index, get_short_mob_name())
+			end
+			DebugNote("do_hunt_trick - hunt:" .. hunt)
+			DebugNote("x_ht command:" .. hunt)
+			Execute(hunt)
+		end
+	end
+
+	function IGuessMobNameBroadcast(mobName, areaId)
+		DebugNote("IGuessMobNameBroadcast : " .. mobName .. "," .. areaId)
+		set_full_mob_name(mobName, "IGuessMobNameBroadcast")
+		local mobName, mobSub = guess_mob_name(mobName, true, areaId)
+		if (mobSub == nil) then
+			--set_short_mob_name(mobName, "IGuessMobNameBroadcast")
+			return mobName, nil
+		else
+			--set_short_mob_name(mobSub, "IGuessMobNameBroadcast")
+			return mobName, serialize.save_simple(mobSub)
+		end
+	end
+	
+	function IGuessMobNameNoBroadcast(mobName, areaId)
+		local mobName, mobSub = guess_mob_name(mobName, false, areaId)
+		if (mobSub == nil) then
+			return mobName, nil
+		else
+			return mobName, serialize.save_simple(mobSub)
+		end
+	end
+	
+	function guess_mob_name(mobName, broadcast, areaId)
+		local mob = mobName	
+		local local_room = room		
+			local parts = split(mobName, "[^ ]+")
+			local comma = (string.find(parts[1], ",") or -1)	-- detect if we have a name like "WinkleWinkle, the coder"
+			DebugNote("isName:" .. #parts .. ":" .. comma .. ":" .. #(parts[1]))
+			
+			if ((#parts > 1) and (comma == #(parts[1]))) then
+				mob = string.lower(string.gsub(parts[1], ",$", ""))
+				DebugNote(mob)
+			else		
+				local clean2 = {}
+				local cleanIndex = 1
+				for key, value in ipairs(parts) do	--clean parts
+					local clean = value
+					clean = string.gsub(clean, "^[Aa]$", "")
+					clean = string.gsub(clean, "^[Aa]n$", "")
+					clean = string.gsub(clean, "^[Tt]he$", "")
+					clean = string.gsub(clean, "^[Oo]f$", "")
+					clean = string.gsub(clean, "^[Ss]ome$", "")
+					
+					if (room ~= nil) then	-- area specific cleans
+						if (currentRoom.zone == "bonds") then
+							clean = string.gsub(clean, "^[Ff]ledgling$", "")
+							clean = string.gsub(clean, "^[Yy]oung$", "")
+						elseif (currentRoom.zone == "hatchling") then
+							clean = string.gsub(clean, "^[Ww]help$", "")
+							clean = string.gsub(clean, "^[Dd]ragon$", "")
+						elseif (currentRoom.zone == "rangers") then
+							clean = string.gsub(clean, "^[Gg]host$", "")
+						elseif (currentRoom.zone == "sennarre") then
+							clean = string.gsub(clean, "^[Gg]ale's$", "")
+						elseif (currentRoom.zone == "sirens") then
+							clean = string.gsub(clean, "^[Mm]iss$", "")
+						elseif (currentRoom.zone == "verume") then
+							clean = string.gsub(clean, "^[Ll]izardman$", "")
+						elseif (currentRoom.zone == "wooble") then
+							clean = string.gsub(clean, "^[Ss]ea$", "")						
+						elseif (currentRoom.zone == "sohtwo") then
+							if (string.find(clean, "^[Ee]vil$") == 1 and #parts == 2) then
+								parts[2] = ""
+							end
+							if (string.find(clean, "^[Gg]ood$") == 1 and #parts == 2) then
+								parts[2] = ""
+							end
+						end
+					end
+					clean = split(clean, "[a-zA-Z]+")
+					-- tprint(clean)
+					if (clean[1] ~= nil and clean[1] ~= "") then
+						clean2[cleanIndex] = clean[1]
+						cleanIndex = cleanIndex + 1
+					end
+				end
+				-- tprint(clean2)
+				if (#clean2 == 0) then			-- we over-guessed!  User entered "qw whelp" or something
+					mob = string.lower(mobName)
+				elseif (#clean2 == 1) then		-- improve variances in keywords by only using first few letters of mob name words
+					mob = string.lower(string.sub(clean2[1], 1, 8))
+				else
+					mob = string.lower(string.sub(clean2[1], 1, 4) .. " " .. string.sub(clean2[#clean2], 1, 4))
+				end
+			end
+		DebugNote("Guessed mob is :	" .. mob)
+		if (broadcast == nil or broadcast == true) then
+			BroadcastPlugin(668, mob)
+		end
+		set_short_mob_name(mob, "guess_mob_name")
+		return mob, mob
+	end
+
+--	******* AUTO HUNT FUNCTIONS *******
+	function auto_hunt(name, line, wildcards)
+		local mobname = string.lower(wildcards.mob)
+		if (mobname == "abort") or (mobname == "0") then
+			auto_hunt_abort("", "", "")
+			return
+		else
+		EnableTriggerGroup("AutoHunt", true)
+		EnableTriggerGroup("HuntTrick", false)
+		auto_hunt_reset()
+		autoHuntMob = mobname
+		SendNoEcho("hunt " .. autoHuntMob)
+		end
+	end
+	
+	function auto_hunt_next(name, line, wildcards)
+		local dir = wildcards.dir
+		auto_hunt_move(dir)
+		Execute("hunt " .. autoHuntMob)
+		auto_hunt_reset()
+	end
+	
+	function auto_hunt_lowskill(name, line, wildcards)
+		print("")
+		ColourNote("#FF5000", "", "Search and Destroy: Autohunt not available - Hunt skill is too low.")
+		ColourNote("#FF5000", "", "                     If hunt skill is available, practice it to 85% or higher.")
+		auto_hunt_abort("", "", "")
+	end
+	
+	function auto_hunt_abort(name, line, wildcards)
+		EnableTriggerGroup("AutoHunt", false)
+		auto_hunt_reset()
+		autoHuntMob = ""
+		ColourNote("#FF5000", "", "Search and Destroy: Aborting auto-hunt...\n")
+	end
+
+	function auto_hunt_complete(name, line, wildcards)
+		EnableTriggerGroup("AutoHunt", false)
+		auto_hunt_reset()
+		autoHuntMob = ""
+		ColourNote("#40C040", "", "Search and Destroy: Auto-hunt complete.\n")
+	end
+	
+	function auto_hunt_portal()
+		print("")
+		ColourNote("#40C040", "", "Search and Destroy: Auto-hunt through portals not working yet.  Enter portal manually and then autohunt again.")
+		auto_hunt_complete("", "", "")
+	end
+	
+	function auto_hunt_move(direction)
+		local dir = dir_map[direction]
+		if (currentRoom == nil) then	-- don't know our gmcp exits, so just go with it
+			DebugNote("going with it")
+			Execute(dir) 		
+		else
+			if (currentRoom.exits[dir] ~= nil) then
+				if (tonumber(currentRoom.exits[dir]) == -1 ) then
+					Execute(dir) 		
+				else
+					--Execute("xmapper move " .. currentRoom.exits[dir])
+					Execute(dir)
+				end
+			else	--no exit?  try and open a hidden door that way
+				Execute("open " .. direction)
+				Execute(dir) 		
+			end		
+		end
+	end
+
+	function auto_hunt_reset()
+		autoHuntData = { count = 0, north = 0, south = 0, east = 0, west = 0, up = 0, down = 0 }
+	end
+
+--	****** WHERE TRICK FUNCTIONS *****
+	local wt = { index = 1, name = "", match = "" }
+	
+	function wt_continue(name, line, wildcards)	
+		wt.index = wt.index + 1
+		Send("wt " .. wt.index .. "." .. wt.name)
+	end	
+
+	function wt_fail(name, line, wildcards)	
+		EnableTriggerGroup("wt", false)
+		Note("Search and Destroy: Aborting where trick...")
+	end	
+	
+----------- page size functions ---------------------------
+	local page_size = 0
+	local page_size_suspended = false
+	
+	function capture_page_size(name, line, wildcards)
+		--Note(name .. ":" .. line .. "," .. tostring(table.concat(wildcards)))
+		EnableTrigger("trg_capture_page_size", false)
+		local size = tonumber(wildcards[1])
+		--Note("size:" .. tostring(size) .. "-" .. tostring(wildcards[1]))
+		page_size = size or 0
+		--Note(page_size)
+		SendNoEcho("pagesize 0")
+	end
+	
+	function suspend_page_size(name, line, wildcards)
+		if (page_size_suspended == false) then
+			page_size_suspended = true
+			ColourNote("DarkGray", "", "--> Suspending paging... if enabled")
+			EnableTrigger("trg_capture_page_size", true)
+			EnableTrigger("trg_pagesize_gag_1", true)
+			SendNoEcho("pagesize")
+		end
+	end	
+
+	function resume_page_size(name, line, wildcards)
+		ColourNote("DarkGray", "", "--> Resuming paging... if enabled")
+		EnableTrigger("trg_capture_page_size", false)
+		if (page_size ~= 0) then
+			SendNoEcho("pagesize " .. page_size)
+		end
+		page_size_suspended = false
+	end	
+
+-- ****** ON PLUGIN BROADCAST ******	
+	function OnPluginBroadcast(msg, id, name, text)
+		if (text == "room.info") then		-- update room info whenever room.info is received.
+			local r = gmcp("room.info")
+			if (r) then
+				currentRoom = r
+			else
+				currentRoom = nil
+			end
+			
+		elseif (text == "comm.quest") then	-- get quest info
+			local q = gmcp("comm.quest")
+			if (q.action == "start") or (q.action == "status" and (q.timer)) then
+				BroadcastPlugin(680, "0")										-- clear highlight from SD GUI since cp mob is no longer targeted
+				gvar_xcp_index = 0												-- clear index from 'xcp' for the same reason
+				--q.room = string.gsub(q.room, "@[bcgmrwyBCDGMRWY]", "") or ""	-- clean out ANSI color codes	--cleanRoom = string.gsub(room, "@x[\d]+", "") -- clean out Xterm color codes	
+				Execute("xm {" .. q.targ .. "} " .. q.room .. "|" .. q.area)
+				set_full_mob_name(q.targ, "comm.quest")	
+				set_short_mob_name(guess_mob_name(q.targ, false), "comm.quest")	-- broadcast short mob name
+				set_is_exact(1, "comm.quest")
+			elseif (q.action == "status" and (q.wait)) then
+				ColourNote("#FF5000", "", "\nSearch and Destroy: You must wait before requesting a new quest.\n")
+			end
+			
+		elseif (text == "config") then		-- required for automatic noexp
+			noexp_onoff = (gmcp("config.noexp") == "YES") and "on" or "off"
+			print("noexp status: " .. noexp_onoff)
+		end
+	end
+
+------------- utils --------------
+	function dbcheck(code)
+		if code ~= sqlite3.OK and    -- no error
+			code ~= sqlite3.ROW and   -- completed OK with another row of data
+			code ~= sqlite3.DONE then -- completed OK, no more rows
+			local err = db:errmsg ()  -- the rollback will change the error message
+			db:exec("ROLLBACK")      -- rollback any transaction to unlock the database
+			error (err, 2)            -- show error in caller's context
+		end
+	end
+	
+	function fixbool(b)
+		if b then
+			return 1
+		else
+			return 0
+		end
+	end
+
+	function fixsql(s)
+		if s then
+			return "'" .. (string.gsub (s, "'", "''")) .. "'" -- replace single quotes with two lots of single quotes
+		else
+			return "NULL"
+		end
+	end
+
+	function padRight(text, length, padChar)
+		local padding = length - string.len(text)
+		for i = 1, padding do
+			text = text .. padChar
+		end
+		return text
+	end	
+	
+	function quote(str)
+		return "\""..str.."\""
+	end
+
+	function sanitize_filename(str)
+		str = string.gsub(str, "[^%w%s()_-]", "")
+		return str
+	end
+	
+	function spairs(t, f)
+		local a = {}
+		for n in pairs(t) do 
+			table.insert(a, n)
+		end
+		table.sort(a, f)
+		local i = 0      -- iterator variable
+		local iter = function ()   -- iterator function
+			i = i + 1
+			if a[i] == nil then
+				return nil
+			else
+				return a[i], t[a[i]]
+			end
+		end
+		return iter
+    end
+
+	function split(line, delim)
+		local result = {}
+		local index = 1
+		for token in string.gmatch(line, delim) do
+			result[index] = token
+			index = index + 1
+		end
+		return result
+	end
+
+	function trim(s)
+	  return s:match'^()%s*$' and '' or s:match'^%s*(.*%S)'
+	end
+
+------------- DEBUGGING ---------------
+	function DebugNote(text)
+		if (showDebug == 1) then
+			--DoAfterSpecial(".1", "Note(\"S&D ~ " .. string.gsub(text, "\"", "\")") .. "\")", sendto.script)
+			Note("S&D ~ " .. text)
+		end
+	end
+
+	function sd_debug(name, line, wildcards)
+		if (showDebug == 0) then
+			showDebug = 1
+		else
+			showDebug = 0
+		end
+		Note("S&D debug:" .. showDebug)
+	end
+
+-- *** END OF LUA CODE ***
+
+-- Misc infomation and whatnot is commented below
+-- Search and Destroy version history:
+--		1.0   - WinkleWinkle.  Original author of S&D.  It has been the gold standard for cp levelling ever since.  
+--		1.1   - Nokfah.  Updated plugins after changes to the mapper plugin rendered 1.0 non-functional.  Originally versioned "2.8" or similar.
+--		1.2   - Lunk.  No updates, but briefly took over hosting.  Banned a short time later for reasons not related to S&D.
+--		1.3.x - Starling.  Active developer and problem fixer as of 1 Jun 2017, with the initial release of 1.3.0 being the first S&D update to occur in years.
+--	   *1.4   - Future developer after Starling, if any.
+--	   *2.0   - Future fundamental rewrite/reorganization of S&D.
+-- Happy hunting, ninjas.
+]]>
+</script>
+</muclient>
