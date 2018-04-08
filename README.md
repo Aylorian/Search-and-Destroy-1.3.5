@@ -15,7 +15,7 @@ Happy new year, ninjas and other fans of mine!  I'm happy to report that 1.3.5 i
     change is that you'll probably see more 'redundant' room cp links than before.  Unfortunately,
     using the area level ranges for filtering is sub-optimal and given the number of exceptions and
     overly broad (or just flat out wrong) level ranges, the only good way to filter would be to
-    store data for every mob, but at that point you're looking at adding a mob db.
+    store data for every mob, but at that point you're looking at something way more involved.
 	
  - Cp type check moved to Search and Destroy, using cp info to get the data.  This removes the 
     escalating probability of mis-identification, which can happen if cp check is used instead.
