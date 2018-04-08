@@ -896,7 +896,6 @@ MAPPER EXTENDER USAGE:
 				
 			elseif (text == "room.area") then
 				currentRoom.areaname = gmcp("room.area.name")
-				print(currentRoom.areaname)
 				
 			elseif (text == "char.status") then
 				res, gmcparg = CallPlugin(plugin_id_gmcp_handler,"gmcpval","char.status")
@@ -1169,7 +1168,6 @@ MAPPER EXTENDER USAGE:
 		else
 			ColourNote("#FF5000", "", "Goto next (go) aborted - No destination yet.")
 		end
-		Execute("xdual")
 	end
 
 	function goto_next(name, line, wildcards)		-- called by "nx" command
