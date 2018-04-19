@@ -1026,7 +1026,7 @@ MAPPER EXTENDER USAGE:
 				end
 				if (row_count == 0) then
 					row_index = row_index + 1
-					cp_target_list[row_index] = {mob = v.mob, roomid = "", arid = "unknown", is_dead = v.is_dead, type = "unknown", ord = row_index}
+					cp_target_list[row_index] = {mob = v.mob, location = v.loc, is_dead = v.is_dead, type = "unknown", ord = row_index}
 				end
 			end
 		
@@ -1115,7 +1115,7 @@ MAPPER EXTENDER USAGE:
 				link = string.format(" %2d  %s - %s %s [%d+]", padRight(i, 4, " "), padRight(mobText, 30, " "), padRight(v.arid, 10, " "), padRight(roomText, 40, " "), v.minlvl)
 				color = ((is_dead == "yes") and "#383838" or "#E0E0E0")	-- dark grey, very light grey
 			else -- unknown
-				link = string.format(" %2d  %s - '%s' is Unknown", padRight(i, 4, " "), padRight(mobText, 30, " "), v.roomName)
+				link = string.format(" %2d  %s - '%s' was not found in the mapper database.", padRight(i, 4, " "), padRight(mobText, 30, " "), v.location)
 				color = ((is_dead == "yes") and "#FF0000" or "#900000")	-- dark red, bright red
 			end		
 			
