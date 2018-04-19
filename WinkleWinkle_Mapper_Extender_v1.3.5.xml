@@ -1012,8 +1012,10 @@ MAPPER EXTENDER USAGE:
 			local db = assert(sqlite3.open(worldPath .. ".db"))
 			local row_index = 0
 			for i,v in ipairs (t) do
+				local row_count = 0
 				local select = string.format(area_sql, fixsql(v.loc))
 				for row in db:nrows(select) do
+					row_count = row_count + 1
 					row_index = row_index + 1
 					cp_target_list[row_index] = {
 						mob = v.mob,
