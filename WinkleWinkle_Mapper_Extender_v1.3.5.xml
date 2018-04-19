@@ -7,7 +7,7 @@
    id="b6eae87ccedd84f510b74715"
    language="Lua"
    purpose="Extends mapper functionality"
-   date_written="2018-04-07 20:30:00"
+   date_written="2017-09-15 18:30:00"
    requires="4.76"
    version="1.3"
    save_state="y"
@@ -323,6 +323,17 @@ MAPPER EXTENDER USAGE:
 		script="player_not_on_cp"
 		name="trg_player_not_on_cp" group="trg_campaign"
 		enabled="y"	regexp="y" sequence="100" send_to="12"
+		>
+		<send>
+			EnableTrigger("trg_xcp_auto", false)
+		</send>
+	</trigger>
+	
+	<trigger
+		match="^You have (?:(?:\d+ day(?:s)?, )?\d+ hour(?:s)? and )?\d+ minute(?:s)? left to finish this campaign\.$"
+		script="xcp_auto"
+		name="trg_xcp_auto" group="trg_campaign"
+		enabled="n"	regexp="y" sequence="100" keep_evaluating="y"
 		>
 	</trigger>
 	
@@ -956,6 +967,7 @@ MAPPER EXTENDER USAGE:
 		Execute("cp ch")
 	end
 
+
 	function xcp_retry()
 		EnableTrigger("trg_xcp_retry", false)
 		Execute("xcp " .. gvar_xcp_index)
@@ -1026,7 +1038,7 @@ MAPPER EXTENDER USAGE:
 				end
 				if (row_count == 0) then
 					row_index = row_index + 1
-					cp_target_list[row_index] = {mob = v.mob, location = v.loc, is_dead = v.is_dead, type = "unknown", ord = row_index}
+					cp_target_list[row_index] = {mob = v.mob, location = area_range[v.loc].arid or "BUG!", is_dead = v.is_dead, type = "unknown_area", ord = row_index}
 				end
 			end
 		
@@ -1075,7 +1087,7 @@ MAPPER EXTENDER USAGE:
 						end
 					else
 						row_index = row_index + 1
-						cp_target_list[row_index] = {mob = v.mob, roomid = "", arid = "unknown", roomName = v.loc, is_dead = v.is_dead, info = "", type = "unknown", ord = row_index}
+						cp_target_list[row_index] = {mob = v.mob, location = v.loc, is_dead = v.is_dead, type = "unknown_room", ord = row_index}
 					end
 				end
 			end
@@ -1085,44 +1097,51 @@ MAPPER EXTENDER USAGE:
 		end
 		local ser = serialize.save_simple(cp_target_list)
 		BroadcastPlugin(669, ser)
-		print_cp_target_links(cp_target_list, "xcp")
-		--tprint(cp_target_list)
+		print_cp_target_links(cp_target_list)
 	end
 
-	function print_cp_target_links(list, command)		-- show the list of target links from cp check (not the same as 'go' links)
+	function print_cp_target_links(t)		-- show the list of target links from cp check (not the same as 'go' links)
 		lastMobSignature = ""	--reset signature for next search
 		if (USER_show_help == "true") then
 			ColourNote("Gray", "", "\n------------------------------------------------------------------------------------------")
 		end
-		
 		local index = 0
-		for i,v in ipairs (list) do
+		for i,v in ipairs (t) do
 			index = index + 1
 			local mobText = v.mob
 			local deadFlag
 			local is_dead = v.is_dead
 			local link
-			local linkhelp = "Target cp mob " .. i .. " - " .. mobText .. " (" .. v.arid .. ")"
+			local linkhelp
 			local notehelp = "Show notes for item " .. i
 			local color
 			if (is_dead == "yes") then
 				mobText = mobText .. " [Dead]"
 				deadFlag = true
 			end
+			
 			if (v.type == "area") then
 				link = string.format(" %2d  %s - %s", padRight(i, 6, " "), padRight(mobText, 30, " "), padRight(v.arid, 10, " "))
+				linkhelp = "Target cp mob " .. i .. " - " .. mobText .. " (" .. v.arid .. ")"
 				color = ((is_dead == "yes") and "#383838" or "#E0E0E0")	-- dark grey, very light grey
 				Hyperlink("xcp " .. i, link, linkhelp, color, "", 0)
-				Hyperlink("roomnote area " .. v.arid , "  [notes]", notehelp, ((is_dead == "yes") and "#383838" or "lightgreen"), "", 0)
+				Hyperlink("roomnote area " .. v.arid, "  [notes]", notehelp, ((is_dead == "yes") and "#383838" or "lightgreen"), "", 0)
 			elseif (v.type == "room") then
 				local roomText = "'" .. v.roomName .. "' (" .. v.roomid .. ")"
 				link = string.format(" %2d  %s - %s %s [%d+]", padRight(i, 4, " "), padRight(mobText, 30, " "), padRight(v.arid, 10, " "), padRight(roomText, 40, " "), v.minlvl)
+				linkhelp = "Target cp mob " .. i .. " - " .. mobText .. " (" .. v.arid .. ")"
 				color = ((is_dead == "yes") and "#383838" or "#E0E0E0")	-- dark grey, very light grey
 				Hyperlink("xcp " .. i, link, linkhelp, color, "", 0)
-			else -- unknown
-				link = string.format(" %2d  %s - '%s' was not found in the mapper database.", padRight(i, 4, " "), padRight(mobText, 30, " "), v.location)
-				color = ((is_dead == "yes") and "#FF0000" or "#900000")	-- dark red, bright red
-				ColourNote(colour, "", link)
+			elseif (v.type == "unknown_area") then
+				link = string.format(" %2d  %s - area '%s' not in mapper db", padRight(i, 4, " "), padRight(mobText, 30, " "), v.location)
+				linkhelp = "Area not found in mapper database"
+				color = ((is_dead == "yes") and "#900000" or "#FF0000")	-- dark red, bright red
+				Hyperlink(" ", link, linkhelp, color, "", 0)
+			elseif (v.type == "unknown_room") then
+				link = string.format(" %2d  %s - room '%s' not in mapper db", padRight(i, 4, " "), padRight(mobText, 30, " "), v.location)
+				linkhelp = "Room not found in mapper database."
+				color = ((is_dead == "yes") and "#900000" or "#FF0000")	-- dark red, bright red
+				Hyperlink(" ", link, linkhelp, color, "", 0)
 			end		
 			print("")
 		end
@@ -1134,6 +1153,15 @@ MAPPER EXTENDER USAGE:
 			ColourNote("Gray", "", "Type '" .. command .. " <index>' or click link to go to that target.")
 		end
 	end
+			
+--			if (link ~= "") then
+--				local linkhelp = "Target cp mob " .. i .. " - " .. mobText .. "(" .. v.arid .. ")"
+--				Hyperlink(command .. " " .. i, link, linkhelp, color, "", 0)
+--			end
+--			if (v.type == "area") then
+	--			local notehelp = "Show notes for item " .. i
+	--			Hyperlink("roomnote area " .. v.arid , "  [notes]", notehelp, ((is_dead == "yes") and "#383838" or "lightgreen"), "", 0)
+--			end
 
 	function player_not_on_cp(name, line, wildcards)
 		DebugNote("player_not_on_cp")
