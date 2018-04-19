@@ -1102,6 +1102,8 @@ MAPPER EXTENDER USAGE:
 			local deadFlag
 			local is_dead = v.is_dead
 			local link
+			local linkhelp = "Target cp mob " .. i .. " - " .. mobText .. " (" .. v.arid .. ")"
+			local notehelp = "Show notes for item " .. i
 			local color
 			if (is_dead == "yes") then
 				mobText = mobText .. " [Dead]"
@@ -1110,27 +1112,22 @@ MAPPER EXTENDER USAGE:
 			if (v.type == "area") then
 				link = string.format(" %2d  %s - %s", padRight(i, 6, " "), padRight(mobText, 30, " "), padRight(v.arid, 10, " "))
 				color = ((is_dead == "yes") and "#383838" or "#E0E0E0")	-- dark grey, very light grey
+				Hyperlink("xcp " .. i, link, linkhelp, color, "", 0)
+				Hyperlink("roomnote area " .. v.arid , "  [notes]", notehelp, ((is_dead == "yes") and "#383838" or "lightgreen"), "", 0)
 			elseif (v.type == "room") then
 				local roomText = "'" .. v.roomName .. "' (" .. v.roomid .. ")"
 				link = string.format(" %2d  %s - %s %s [%d+]", padRight(i, 4, " "), padRight(mobText, 30, " "), padRight(v.arid, 10, " "), padRight(roomText, 40, " "), v.minlvl)
 				color = ((is_dead == "yes") and "#383838" or "#E0E0E0")	-- dark grey, very light grey
+				Hyperlink("xcp " .. i, link, linkhelp, color, "", 0)
 			else -- unknown
 				link = string.format(" %2d  %s - '%s' was not found in the mapper database.", padRight(i, 4, " "), padRight(mobText, 30, " "), v.location)
 				color = ((is_dead == "yes") and "#FF0000" or "#900000")	-- dark red, bright red
+				ColourNote(colour, "", link)
 			end		
-			
-			if (link ~= "") then
-				local linkhelp = "Target cp mob " .. i .. " - " .. mobText .. "(" .. v.arid .. ")"
-				Hyperlink(command .. " " .. i, link, linkhelp, color, "", 0)
-			end
-			if (v.type == "area") then
-				local linkhelp = "Show notes for item " .. i
-				Hyperlink("roomnote area " .. v.arid , "  [notes]", linkhelp, ((is_dead == "yes") and "#383838" or "lightgreen"), "", 0)
-			end
 			print("")
 		end
 		if (index == 0) then
-			ColourNote("#FF5000", "", "   No campaign items to show.")
+			ColourNote("#FF5000", "", "   No campaign items to show.  (If this appears to be a bug, do 'areas 1 300 keywords')")
 		end
 		if (USER_show_help == "true") then
 			ColourNote("Gray", "", "------------------------------------------------------------------------------------------")
