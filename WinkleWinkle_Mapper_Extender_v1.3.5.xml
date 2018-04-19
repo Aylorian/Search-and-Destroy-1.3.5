@@ -1,0 +1,1896 @@
+<?xml version="1.0" encoding="iso-8859-1"?>
+<!DOCTYPE muclient>
+<muclient>
+<plugin
+   name="WinkleWinkle_Mapper_Extender_135"
+   author="WinkleWinkle, Starling"
+   id="b6eae87ccedd84f510b74715"
+   language="Lua"
+   purpose="Extends mapper functionality"
+   date_written="2017-09-15 18:30:00"
+   requires="4.76"
+   version="1.3"
+   save_state="y"
+   >
+
+<description trim="n">
+<![CDATA[
+
+MAPPER EXTENDER USAGE:
+
+===== SHOW THIS HELP =============>
+>    extender help
+        - shows only this help
+>    ww help
+        - all winklewinkle(tm) plugins show help
+
+===== RUNNING ====================>
+>   xrunto [area id], xrt [area id]
+        - Run to the start room of the given area.
+
+>   xset mark
+        - Set current room to be the start room of the area
+
+>   xset speed
+        - Toggles the use of mapper goto/walkto for all movement commands
+		
+>   xset speed <walk|run>
+        - changes the use of mapper goto/walkto for all movement commands
+
+>   xm move <roomid>
+        - uses set movement speed to move to the specified room id
+
+>   xm move <roomid> <walk|run>
+        - uses a temporary movement speed to move to the specified room id
+		
+===== SEARCHING ==================>
+>   xm [roomname]	
+        - Lists and numbers rooms that match the [roomname] exactly, and then partial matches in the current area
+		
+>   xmall [roomname]
+        - Lists and numbers rooms that match the [roomname] exactly, and then partial matches in all areas
+		
+===== ROOMS ======================>
+>   go
+        - Run to the first room in a numbered room list
+		
+>   go [index]
+        - Run to the given line item in a numbered room list.
+		
+>   nx
+        - Run to the next room in a numbered list
+>   nx-
+        - Run to the previous room in a numbered list
+		
+===== CAMPAIGNS ==================>
+>   xcp	
+        - Get target info for the first available (living) mob in your cp list.
+		- If area cp, run to target area and do hunt trick.  If room cp, load target info directly. 
+		- After locating the target, use 'go' to run to it.  If multiple rooms were found, use 'nx'
+		  and 'nx-' to check each one.
+		
+>   xcp [index]
+        - Get target info for the given mob in your cp list.  Will not skip over dead mobs.
+	
+	xcp mode [ht|qw|off]
+        - In area cp's, set 'xcp' to automatically hunt trick, quick where, or do nothing after
+          running to the target area.
+	
+===== NOTES ======================>
+>   roomnote
+        - Lists all mapper notes for the current room (if any).
+		
+>   roomnote area
+        - Lists all mapper notes for the current area (if any). Useful for mazes
+
+===== SETTINGS ======================>
+>   xset pk
+        - Toggles the display of PK flag in room searches
+
+>   xset vidblain
+        - Toggles a hack that will allow you to speedwalk to vidblain areas if you do not have a portal to use
+		
+]]>
+</description>
+</plugin>
+
+<!--  Timers  -->
+<timers>
+	<timer
+		name="tim_init_plugin"
+		script="init_plugin"
+		enabled="y"
+		second="1"
+		>
+	</timer>
+	
+	<timer
+		name="execute_in_area_timer"
+		script="execute_in_area_tick"
+		enabled="n"
+		second="0.25"
+		>
+	</timer>
+</timers>
+
+<!--  Aliases  -->
+<aliases>
+	<!-- debug -->
+	<alias
+		match="^ext debug$"
+		script="ext_debug"
+		name="ali_toggle_debug"
+		enabled="y" regexp="y" sequence="100" ignore_case="y"
+		>
+	</alias>
+
+	<alias
+		match="^ext print (?<data>.+)$"
+		script="ext_print"
+		name="ext_print_data"
+		enabled="y" regexp="y" sequence="100" ignore_case="y"
+		>
+	</alias>	
+	
+		<!-- help section, need to redo this -->
+	<alias 
+		match="^(?:ww|extender) help$"
+		enabled="y" regexp="y" sequence="100" ignore_case="y" send_to="12" keep_evaluating="y"		
+		>
+		<send>ColourNote("MediumSeaGreen", "", GetPluginInfo (GetPluginID (), 3))</send>
+	</alias>
+
+	<!-- Settings -->
+	<alias
+		match="^xset pk$"
+		script="xset_pk"
+		name="ali_set_pk"
+		enabled="y" regexp="y" sequence="100" ignore_case="y"
+		>
+	</alias>
+
+	<alias 
+		match="^xset mark$"
+		script="xset_to_mark"
+		enabled="y" regexp="y" sequence="100" ignore_case="y"
+		>
+	</alias>
+
+	<alias 
+		match="^xset vidblain$"
+		script="set_check_vidblain"
+		enabled="y" regexp="y" sequence="99" ignore_case="y"		
+		>
+	</alias>
+	
+	<alias 
+		match="^xcp mode(?: (?<option>ht|qw|off))?$"
+		script="option_set_xcp_mode"
+		enabled="y" regexp="y" sequence="100" ignore_case="y" send_to="12"		
+		>
+	</alias>
+
+	<alias
+		match="^(?:xrt|xrun|xrunto) (?<loc>.+)$"
+		script="xrun_to"
+		enabled="y" regexp="y" sequence="100" ignore_case="y"
+		>
+	</alias>
+
+	<alias 
+		match="^xcp( (?<index>[0-9]+))?$"
+		script="xcp_goto_list_item"
+		enabled="y" regexp="y" sequence="100" ignore_case="y"
+		>
+	</alias>
+	
+	<alias 
+		match="^cp (?<arg>ch|check|test)$"
+		script="cp_check_start"
+		enabled="y" regexp="y" sequence="100" ignore_case="y" send_to="12"
+		>
+		<send>
+			EnableTrigger("trg_cp_check_line", true)
+		</send>
+	</alias>
+
+	<alias 
+		match="^(?:go|goto)( (?<id>[0-9]+))?$"
+		script="goto_number"
+		enabled="y" regexp="y" sequence="100" ignore_case="y"
+		>
+	</alias>
+
+	<alias 
+		match="^nx$"
+		script="goto_next"
+		enabled="y" regexp="y" sequence="100" ignore_case="y"
+		>
+	</alias>
+	
+	<alias 
+		match="^nx-$"
+		script="goto_previous"
+		enabled="y" regexp="y" sequence="100" ignore_case="y"
+		>
+	</alias>
+
+	<!-- speed -->
+	<alias
+		match="^xset speed ?(?<speed>run|walk)?$"
+		script="set_speed"
+		enabled="y" regexp="y" sequence="100" ignore_case="y"
+		>
+	</alias>
+	
+	<alias
+		match="^(?:xmapper|xmap|xm) move (?<roomid>[0-9]+) ?(?<speed>run|walk)?$"
+		script="move_trigger"
+			enabled="y" regexp="y" sequence="95" ignore_case="y"
+		>
+	</alias>
+	
+	<alias
+		match="^xm(?:\ {(?<mob>[^\}]+)\})? (?<loc>.+)$"
+		script="map_area"
+		enabled="y" regexp="y" sequence="100" ignore_case="y"
+		>
+	</alias>
+
+	<alias
+		match="^xmal?l?(?:\ {(?<mob>[^\}]+)\})? (?<loc>.+)$"
+		script="map_area_all"
+		enabled="y" regexp="y" sequence="99" ignore_case="y"
+		>
+	</alias>
+	
+	<!-- roomnotes -->
+	<alias
+		match="^r(?:oomnote|n)$"
+		script="room_note"
+		enabled="y" regexp="y" sequence="100" ignore_case="y"
+		>
+	</alias>
+
+	<alias
+		match="^r(?:oomnote|n) a(?:rea)?(?: (?<arid>.+))?$"
+		script="room_note_area"
+		enabled="y" regexp="y" sequence="99" ignore_case="y"
+		>
+	</alias>
+
+	<!-- Sql Execution -->
+	<alias 
+		match="^runsql (?<sql>.+)$"
+		script="RunSql"
+		name="runsql"
+		enabled="y" regexp="y" sequence="1" ignore_case="y"
+		>
+	</alias>
+
+    <alias
+		match="^execsql (?<sql>.+)$"
+		script="ExecSql"
+		name="execsql"
+		enabled="y" regexp="y" sequence="1" ignore_case="y"
+		>
+    </alias>
+</aliases>
+
+<triggers>
+		<!-- Campaign Triggers -->	
+	<trigger
+		match="^.+ tells you \'Good luck in your campaign\!\'$"
+		name="trg_cp_request" group="trg_campaign"
+		enabled="y"	regexp="y" sequence="100" keep_evaluating="y" send_to="12"
+		>
+		<send>EnableTrigger("trg_xcp_retry", false)</send>
+	</trigger>
+
+	<trigger
+		match="^Congratulations, that was one of your CAMPAIGN mobs\!$"
+		script="xcp_mob_killed"
+		name="trg_cp_mob_killed" group="trg_campaign"
+		enabled="y"	regexp="y" sequence="100" keep_evaluating="y" send_to="12"
+		>
+	</trigger>
+
+	<trigger
+		match="^You still have to kill \* (?<mob>[^(]+) \((?<loc>.+?)(?<isdead> - Dead)?\)$"
+		script="cp_check_line"
+		name="trg_cp_check_line" group="trg_campaign"
+		enabled="n"	regexp="y" sequence="500" omit_from_output="y" send_to="12"
+		>
+		<send>
+			EnableTrigger("trg_cp_check_end", true)
+		</send>
+	</trigger>
+
+	<trigger
+		match="^(?!You still have to kill \*)"
+		script="cp_check_end"
+		name="trg_cp_check_end" group="trg_campaign"
+		enabled="n"	regexp="y" sequence="500" omit_from_output="n" send_to="12"
+		>
+		<send>
+			EnableTrigger("trg_cp_check_line", false)
+			EnableTrigger("trg_cp_check_end", false)
+		</send>
+	</trigger>
+
+	<trigger
+		match="^You are not currently on a campaign\.$"
+		script="player_not_on_cp"
+		name="trg_player_not_on_cp" group="trg_campaign"
+		enabled="y"	regexp="y" sequence="100" send_to="12"
+		>
+
+	</trigger>
+	
+	<trigger
+		match="^You have (?:(?:\d+ day(?:s)?, )?\d+ hour(?:s)? and )?\d+ minute(?:s)? left to finish this campaign\.$"
+		script="xcp_retry"
+		name="trg_xcp_retry" group="trg_campaign"
+		enabled="n"	regexp="y" sequence="100" keep_evaluating="y"
+		>
+	</trigger>
+
+	<trigger
+		match="^Note\: One or more target names in this campaign might be slightly scrambled\.$"
+		script=""
+		name="trg_cp_check_scrambled_gag" group="trg_campaign"
+		enabled="y" regexp="y" sequence="100" keep_evaluating="y" omit_from_output="y"
+		>
+	</trigger>	
+	
+	<trigger
+		match="^Note\: Dead means that the target is dead, not that you have killed it\.$"
+		script=""
+		name="trg_cp_check_dead_gag" group="trg_campaign"
+		enabled="y" regexp="y" sequence="100" keep_evaluating="y" omit_from_output="y"
+		>
+	</trigger>
+
+	<!-- area indexing triggers -->
+	<trigger
+		match="^              \[ Listing all areas in range 1 to 300 \]$"
+		script="area_index_start"
+		name="trg_area_index_start"
+		enabled="y" regexp="y" sequence="100" omit_from_output="y" send_to="12"
+		>
+		<send>
+			EnableTrigger("trg_area_index_gag_headers", true)
+			EnableTrigger("trg_area_index_gag_header_lines", true)
+			EnableTrigger("trg_area_index_line", true)
+			EnableTrigger("trg_area_index_gag_lock_means", true)
+			EnableTrigger("trg_area_index_end", true)
+		</send>
+	</trigger>
+
+	<trigger
+		match="^From To   Lock  Keyword          Area Name"
+		name="trg_area_index_gag_headers"
+		enabled="n" regexp="y" sequence="100" omit_from_output="y" send_to="12"
+		>
+		<send>
+			EnableTrigger("trg_area_index_gag_headers", false)
+		</send>
+	</trigger>
+	
+	<trigger
+		match="---- ---- ----  ---------------  ------------------------------"
+		name="trg_area_index_gag_header_lines"
+		enabled="n" regexp="n" sequence="100" omit_from_output="y" send_to="12"
+		>
+		<send>
+			EnableTrigger("trg_area_index_gag_header_lines", false)
+		</send>
+	</trigger>
+
+	<trigger	
+		match="^\s+(?<min>\d+)\s+(?<max>\d+)\s+(?<lock>\d+)?\s+?(?<arid>.+?)\s+(?<areaName>.+?)$"
+		script="area_index_line"
+		name="trg_area_index_line"
+		enabled="n" regexp="y" sequence="100" omit_from_output="y" send_to="12"
+		>
+	</trigger>
+
+	<trigger
+		match="'Lock' means you cannot enter until you are that level or higher."
+		name="trg_area_index_gag_lock_means"
+		enabled="n" regexp="n" sequence="100" omit_from_output="y" send_to="12"
+		>
+		<send>
+			EnableTrigger("trg_area_index_gag_lock_means", false)
+		</send>
+	</trigger>
+
+	<trigger
+		match="---------------------------------------------------------------"
+		script="area_index_end"
+		name="trg_area_index_end"
+		enabled="n" regexp="n" sequence="100" omit_from_output="y" keep_evaluating="y" send_to="12"
+		>
+		<send>
+			EnableTrigger("trg_area_index_line", false)
+			EnableTrigger("trg_area_index_end", false)
+		</send>
+	</trigger>
+</triggers>
+
+<variables>
+	<variable name="example"></variable>
+</variables>
+
+<!--  Get our standard constants -->
+<include name="constants.lua"/>
+
+<script>
+<![CDATA[
+-- Search and Destroy version history:
+--		1.0   - WinkleWinkle.  Original author of S&D.  It has been the gold standard for cp levelling ever since.  
+--		1.1   - Nokfah.  Updated plugins after changes to the mapper plugin rendered 1.0 non-functional.  Originally versioned "2.8" or similar.
+--		1.2   - Lunk.  No updates, but briefly took over hosting.  Banned a short time later for reasons not related to S&D.
+--		1.3.x - Starling.  Active developer and problem fixer as of 1 Jun 2017, with the initial release of 1.3.0 being the first S&D update to occur in years.
+--	   *1.4   - Future developer after Starling, if any.
+--	   *2.0   - Future fundamental rewrite/reorganization of S&D.
+-- Happy hunting, ninjas.
+
+	require "serialize"
+	require "gmcphelper"
+	require "tprint"
+	require "wait"
+
+	local plugin_id_gmcp_handler = "3e7dedbe37e44942dd46d264"
+	local plugin_id_gmcp_mapper = "b6eae87ccedd84f510b74714"
+	local plugin_id_extender_gui = "3f498d929793c12cb70f5999"
+	local plugin_id_mapper_extender = "b6eae87ccedd84f510b74715"
+	local plugin_id_search_destroy = "e50b1d08a0cfc0ee9c442001"
+
+	local area_range = {}
+	local areaIndex = {}
+	local areaStartRooms = {}
+	local char_status
+	local cpIndex = 1
+	local cpList = {}
+	local cp_type = GetVariable("mcvar_cp_type") or "none" -- can be "none" (not on a cp), "area", or "room"
+	local currentRoom = {}
+	local gotoList = {}
+	local gotoIndex = 1
+	local gvar_xcp_index = 0
+	local init_called = 0
+	local last_area = ""
+	local last_substitute
+	local cp_level_taken = tonumber(GetVariable("mcvar_cp_level_taken")) or 0
+	local mapper_area_index = 0
+	local next_room = -1
+	local previousRoom = {}
+	local searchIndex = 0
+	local searchResult = {}
+	local showDebug = 0
+	local showPK = GetVariable("showPK") or "true"
+	local speed = "run"
+	local start_room_type
+	local xrunto_area_id
+	local USER_check_vidblain = GetVariable("XRunToCheckVidblain") or "false"
+	local USER_show_help = "true"
+	
+	local option_xcp_mode = GetVariable("mcvar_option_xcp_mode") or "ht"
+	--local USER_run_if_one_room = true
+
+	if (GetVariable("areaStartRooms") ~= nil) then			
+		luastmt = "obj = " .. GetVariable("areaStartRooms")
+		assert (loadstring (luastmt or "")) ()		
+		areaStartRooms = obj
+	end	
+	
+-- 	Default area start rooms when there is no xset mark:
+	local areaDefaultStartRooms = {			
+		["abend"] 		= { roomid = "24909", ct = "3" },		-- Continents
+		["alagh"] 		= { roomid =  "3224", ct = "4" },
+		["gelidus"] 	= { roomid = "18780", ct = "2" },
+		["mesolar"] 	= { roomid = "12664", ct = "0" },
+		["southern"] 	= { roomid =  "5192", ct = "1" },
+		["uncharted"] 	= { roomid =  "7701", ct = "5" },
+		["vidblain"] 	= { roomid = "33570", ct = "6" },
+	
+		["aardington"] 	= { roomid = "47509" },		-- A --
+		["academy"] 	= { roomid = "35233" },
+		["adaldar"] 	= { roomid = "34400" },
+		["afterglow"] 	= { roomid = "38134" },
+		["agroth"] 		= { roomid = "11027" },
+		["ahner"] 		= { roomid = "30129" },
+		["alehouse"] 	= { roomid =   "885" },
+		["amazon"] 		= { roomid =  "1409" },
+		["amusement"] 	= { roomid = "29282" },
+		["andarin"] 	= { roomid =  "2399" },
+		["annwn"] 		= { roomid = "28963" },
+		["anthrox"] 	= { roomid =  "3993" },
+		["arena"] 		= { roomid = "25768" },
+		["arisian"] 	= { roomid = "28144" },
+		["ascent"] 		= { roomid = "43161" },
+		["astral"] 		= { roomid = "27882" },
+		["atlantis"] 	= { roomid = "10573" },
+		["autumn"] 		= { roomid = "13839" },
+		["avian"] 		= { roomid =  "4334" },
+		["aylor"] 		= { roomid = "32418" },
+		["bazaar"] 		= { roomid = "34454" },		-- B --
+		["beer"] 		= { roomid = "20062" },
+		["believer"] 	= { roomid = "25940" },
+		["blackrose"] 	= { roomid =  "1817" },
+		["bliss"] 		= { roomid = "29988" },
+		["bonds"] 		= { roomid = "23411" },
+		["caldera"] 	= { roomid = "26341" },		-- C --
+		["callhero"] 	= { roomid = "33031" },
+		["camps"] 		= { roomid =  "4714" },
+		["canyon"] 		= { roomid = "25551" },
+		["caravan"] 	= { roomid = "16071" },
+		["cards"] 		= { roomid =  "6255" },
+		["carnivale"] 	= { roomid = "28635" },
+		["cataclysm"] 	= { roomid = "19976" },
+		["cathedral"] 	= { roomid = "27497" },
+		["cats"] 		= { roomid = "40900" },
+		["chasm"] 		= { roomid = "29446" },
+		["chessboard"]	= { roomid = "25513" },
+		["childsplay"] 	= { roomid =   "678" },
+		["cineko"] 		= { roomid =  "1507" },
+		["citadel"] 	= { roomid = "14963" },
+		["conflict"] 	= { roomid = "27711" },
+		["coral"] 		= { roomid =  "4565" },
+		["cougarian"] 	= { roomid = "14311" },
+		["cove"] 		= { roomid = "49941" },
+		["cradle"] 		= { roomid = "11267" },
+		["crynn"] 		= { roomid = "43800" },
+		["damned"] 		= { roomid = "10469" },		-- D --
+		["darklight"] 	= { roomid = "19642" },
+		["darkside"] 	= { roomid = "15060" },
+		["ddoom"] 		= { roomid =  "4193" },
+		["deadlights"] 	= { roomid = "16856" },
+		["deathtrap"] 	= { roomid =  "1767" },
+		["deneria"] 	= { roomid = "35006" },
+		["desert"] 		= { roomid = "20186" },
+		["desolation"] 	= { roomid = "19532" },
+		["dhalgora"] 	= { roomid = "16755" },
+		["diatz"] 		= { roomid =  "1254" },
+		["diner"] 		= { roomid = "36700" },
+		["dortmund"] 	= { roomid = "16577" },
+		["drageran"] 	= { roomid = "25894" },
+		["dread"] 		= { roomid = "26075" },
+		["dsr"] 		= { roomid = "30030" },
+		["dundoom"] 	= { roomid = "25661" },
+		["dunoir"] 		= { roomid = "14222" },
+		["duskvalley"] 	= { roomid = "37301" },
+		["dynasty"] 	= { roomid = "30799" },
+		["earthlords"] 	= { roomid = "42000" },		-- E --
+		["earthplane"] 	= { roomid =  "1354" },
+		["elemental"] 	= { roomid = "41624" },
+		["empire"] 		= { roomid = "32203" },
+		["empyrean"] 	= { roomid = "14042" },
+		["entropy"] 	= { roomid = "29773" },
+		["fantasy"] 	= { roomid = "15205" },		-- F --
+		["farm"] 		= { roomid = "10676" },
+		["fayke"] 		= { roomid = "30418" },
+		["fens"] 		= { roomid = "16528" },
+		["fields"] 		= { roomid = "29232" },
+		["firebird"] 	= { roomid = "32885" },
+		["firenation"] 	= { roomid = "41879" },
+		["fireswamp"] 	= { roomid = "34755" },
+		["fortress"] 	= { roomid = "31835" },
+		["fortune"] 	= { roomid = "38561" },
+		["fractured"] 	= { roomid = "17033" },
+		["ft1"] 		= { roomid =  "1205" },
+		["ftii"] 		= { roomid = "26673" },
+		["gallows"] 	= { roomid =  "4344" },		-- G --
+		["gathering"] 	= { roomid = "36451" },
+		["gauntlet"] 	= { roomid = "31652" },
+		["geniewish"] 	= { roomid = "38464" },
+		["gilda"] 		= { roomid =  "4243" },
+		["glamdursil"] 	= { roomid = "35055" },
+		["glimmerdim"] 	= { roomid = "26252" },
+		["gnomalin"] 	= { roomid = "34397" },
+		["goldrush"] 	= { roomid = "15014" },
+		["graveyard"] 	= { roomid = "28918" },
+		["greece"] 		= { roomid =  "2089" },
+		["gwillim"] 	= { roomid = "25974" },
+		["hades"] 		= { roomid = "29161" },		-- H --
+		["hatchling"]	= { roomid = "34670" },
+		["hawklord"] 	= { roomid = "40550" },
+		["hedge"] 		= { roomid = "15146" },
+		["helegear"] 	= { roomid = "30699" },
+		["hell"] 		= { roomid = "30984" },
+		["hoard"] 		= { roomid =  "1675" },
+		["hodgepodge"] 	= { roomid = "30469" },
+		["horath"] 		= { roomid =    "91" },
+		["horizon"] 	= { roomid = "31959" },
+		["icefall"] 	= { roomid = "38701" },		-- I --
+		["illoria"] 	= { roomid = "10420" },
+		["imagi"] 		= { roomid = "36800" },
+		["imperial"] 	= { roomid = "16966" },
+		["infamy"] 		= { roomid = "26641" },
+		["infest"] 		= { roomid = "16165" },
+		["insan"] 		= { roomid =  "6850" },
+		["jenny"] 		= { roomid = "29637" },		-- J --
+		["jotun"] 		= { roomid = "31508" },
+		["kearvek"] 	= { roomid = "29722" },		-- K --
+		["kerofk"] 		= { roomid = "16405" },
+		["ketu"] 		= { roomid = "35114" },
+		["kingsholm"] 	= { roomid = "27522" },
+		["knossos"] 	= { roomid = "28193" },
+		["kobaloi"] 	= { roomid = "10691" },
+		["kultiras"] 	= { roomid = "31161" },
+		["lab"] 		= { roomid = "28684" },		-- L --
+		["labyrinth"] 	= { roomid = "31405" },
+		["lagoon"] 		= { roomid = "30549" },
+		["landofoz"] 	= { roomid =   "510" },
+		["laym"] 		= { roomid =  "6005" },
+		["legend"] 		= { roomid = "16224" },
+		["lemdagor"] 	= { roomid =  "1966" },
+		["lidnesh"] 	= { roomid = "27995" },
+		["livingmine"] 	= { roomid = "37008" },
+		["longnight"] 	= { roomid = "26367" },
+		["losttime"] 	= { roomid = "28584" },
+		["lplanes"] 	= { roomid = "29364" },
+		["maelstrom"] 	= { roomid = "38058" },		-- M --
+		["manor"] 		= { roomid = "10621" },
+		["masq"] 		= { roomid = "29840" },
+		["mayhem"] 		= { roomid =  "1866" },
+		["melody"] 		= { roomid = "14172" },
+		["minos"] 		= { roomid = "20472" },
+		["mistridge"] 	= { roomid =  "4491" },
+		["monastery"] 	= { roomid = "15756" },
+		["mudwog"] 		= { roomid =  "2347" },
+		["nanjiki"] 	= { roomid = "11203" },		-- N --
+		["necro"] 		= { roomid = "29922" },
+		["nenukon"] 	= { roomid = "31784" },
+		["newthalos"] 	= { roomid = "23853" },
+		["ninehells"] 	= { roomid =  "4613" },
+		["northstar"] 	= { roomid = "11127" },
+		["nottingham"] 	= { roomid = "11077" },
+		["nulan"] 		= { roomid = "37900" },
+		["nursing"] 	= { roomid = "31977" },
+		["nynewoods"] 	= { roomid = "23562" },
+		["oceanpark"] 	= { roomid = "39600" },		-- O --
+		["omentor"] 	= { roomid = "15579" },
+		["oradrin"] 	= { roomid =    "25436" },
+		["origins"] 	= { roomid = "35900" },
+		["orlando"] 	= { roomid = "30331" },
+		["paradise"] 	= { roomid = "29624" },		-- P --
+		["partroxis"] 	= { roomid =  "5814" },
+		["peninsula"] 	= { roomid = "35701" },
+		["petstore"] 	= { roomid =   "995" },
+		["pompeii"] 	= { roomid =    "57" },
+		["promises"] 	= { roomid = "25819" },
+		["prosper"] 	= { roomid = "28268" },
+		["qong"] 		= { roomid = "16115" },		-- Q --
+		["quarry"] 		= { roomid = "23510" },
+		["radiance"] 	= { roomid = "19805" },		-- R --
+		["raga"] 		= { roomid = "19861" },
+		["raukora"] 	= { roomid =  "6040" },
+		["rebellion"] 	= { roomid = "10305" },
+		["remcon"] 		= { roomid = "25837" },
+		["reme"] 		= { roomid = "32703" },
+		["rosewood"] 	= { roomid =  "6901" },
+		["ruins"] 		= { roomid = "16805" },
+		["sagewood"] 	= { roomid = "28754" },		-- S --
+		["sahuagin"] 	= { roomid = "34592" },
+		["salt"] 		= { roomid =  "4538" },
+		["sanctity"] 	= { roomid = "10518" },
+		["sanctum"] 	= { roomid = "15307" },
+		["sandcastle"] 	= { roomid = "37701" },
+		["sanguine"] 	= { roomid = "15436" },
+		["scarred"] 	= { roomid = "34036" },
+		["sendhian"] 	= { roomid = "20288" },
+		["sennarre"] 	= { roomid = "15491" },
+		["shouggoth"] 	= { roomid = "34087" },
+		["siege"] 		= { roomid = "43265" },
+		["sirens"] 		= { roomid = "16298" },
+		["slaughter"] 	= { roomid =  "1601" },
+		["snuckles"] 	= { roomid =   "182" },
+		["soh"] 		= { roomid = "25611" },
+		["sohtwo"] 		= { roomid = "30752" },
+		["solan"] 		= { roomid = "23713" },
+		["songpalace"] 	= { roomid = "47013" },
+		["spyreknow"] 	= { roomid = "34800" },
+		["stone"] 		= { roomid = "11386" },
+		["storm"] 		= { roomid =  "6304" },
+		["stormhaven"] 	= { roomid = "20649" },
+		["stronghold"] 	= { roomid = "20572" },
+		["stuff"] 		= { roomid = "40400" },
+		["takeda"] 		= { roomid = "15952" },		-- T --
+		["talsa"] 		= { roomid = "26917" },
+		["temple"] 		= { roomid = "31597" },
+		["tanra"] 		= { roomid = "46913" },
+		["terra"] 		= { roomid = "19679" },
+		["terramire"] 	= { roomid =  "4493" },
+		["thieves"] 	= { roomid =     "7" },
+		["times"] 		= { roomid = "28463" },
+		["tirna"] 		= { roomid = "20136" },
+		["titan"] 		= { roomid = "38234" },
+		["tol"] 		= { roomid = "16325" },
+		["tombs"] 		= { roomid = "15385" },
+		["umari"] 		= { roomid = "36601" },		-- U --
+		["underdark"] 	= { roomid = "27341" },
+		["uplanes"] 	= { roomid = "29364" },
+		["uprising"] 	= { roomid = "15382" },
+		["vale"] 		= { roomid =  "1036" },		-- V --
+		["verdure"] 	= { roomid = "24090" },
+		["verume"] 		= { roomid = "30607" },
+		["village"] 	= { roomid = "30850" },
+		["vlad"] 		= { roomid = "15970" },
+		["volcano"] 	= { roomid =  "6091" },
+		["weather"] 	= { roomid = "40499" },		-- W --
+		["werewood"] 	= { roomid = "30956" },
+		["wildwood"] 	= { roomid =   "322" },
+		["winds"] 		= { roomid = "39900" },
+		["winter"] 		= { roomid =  "1306" },
+		["wizards"] 	= { roomid = "31316" },
+		["wonders"] 	= { roomid = "32981" },
+		["wooble"] 		= { roomid = "11335" },
+		["woodelves"] 	= { roomid = "32199" },
+		["wtc"] 		= { roomid = "37895" },
+		["wyrm"] 		= { roomid = "28847" },
+		["xmas"] 		= { roomid =  "6212" },		-- X --
+		["xylmos"] 		= { roomid =   "472" },
+		["yarr"] 		= { roomid = "30281" },
+		["ygg"] 		= { roomid = "24186" },		-- Y --
+		["yurgach"] 	= { roomid = "29450" },
+		["zangar"] 		= { roomid =  "6164" },		-- Z --
+		["zodiac"] 		= { roomid = "15857" },
+		["zoo"] 		= { roomid =  "5920" },
+		["zyian"] 		= { roomid =   "729" },
+
+	--	["inferno"]		= { roomid =    "-1" },		-- Questable Areas still lacking a default start room
+	
+	
+		-- Non-questable Areas
+		["manor1"] 		= { roomid = "14460", noquest = true },		-- Manor areas
+		["manor3"] 		= { roomid = "20836", noquest = true },
+		["manorisle"] 	= { roomid =  "6366", noquest = true },
+		["manormount"] 	= { roomid = "39449", noquest = true },
+		["manorsea"] 	= { roomid = "35003", noquest = true },
+		["manorville"] 	= { roomid = "35004", noquest = true },
+		["manorwoods"] 	= { roomid = "35002", noquest = true },
+		
+		["badtrip"] 	= { roomid = "32877", noquest = true },		-- Other no-quest areas
+		["birthday"]	= { roomid = "10920", noquest = true },
+		["lowlands"] 	= { roomid = "28044", noquest = true },
+		["seaking"]		= { roomid =    "-1", noquest = true },
+		
+		["amazonclan"] 	= { roomid = "34212", noquest = true },		-- Public clan halls
+		["bard"] 		= { roomid = "30538", noquest = true },
+		["bootcamp"] 	= { roomid = "49256", noquest = true },
+		["cabal"] 		= { roomid = "15704", noquest = true },
+		["chaos"] 		= { roomid = "28909", noquest = true },
+		["crimson"] 	= { roomid = "27989", noquest = true },
+		["crusaders"] 	= { roomid = "31122", noquest = true },
+		["daoine"] 		= { roomid = "30949", noquest = true },
+		["doh"] 		= { roomid = "16803", noquest = true },
+		["dominion"] 	= { roomid =  "5863", noquest = true },
+		["dragon"] 		= { roomid =   "642", noquest = true },
+		["druid"] 		= { roomid = "29582", noquest = true },
+		["emerald"] 	= { roomid =   "831", noquest = true },
+		["gaardian"] 	= { roomid = "20026", noquest = true },
+		["imperium"] 	= { roomid = "30415", noquest = true },
+		["light"] 		= { roomid =  "2339", noquest = true },
+		["loqui"] 		= { roomid = "28580", noquest = true },
+		["masaki"] 		= { roomid = "15852", noquest = true },
+		["perdition"] 	= { roomid = "19968", noquest = true },
+		["pyre"] 		= { roomid = "15141", noquest = true },
+		["romani"] 		= { roomid = "24180", noquest = true },
+		["seekers"] 	= { roomid = "14165", noquest = true },
+		["shadokil"] 	= { roomid = "32407", noquest = true },
+		["tanelorn"] 	= { roomid = "31561", noquest = true },
+		["tao"] 		= { roomid = "29210", noquest = true },
+		["touchstone"] 	= { roomid = "28346", noquest = true },
+		["twinlobe"] 	= { roomid = "15575", noquest = true },
+		["vanir"] 		= { roomid =   "878", noquest = true },
+		["watchmen"] 	= { roomid = "32342", noquest = true },
+		
+		["baal"] 		= { roomid =    "-1", noquest = true },		-- Closed clan halls
+		["hook"] 		= { roomid =    "-1", noquest = true },
+		["retri"] 		= { roomid =    "-1", noquest = true },
+		["rhabdo"] 		= { roomid =    "-1", noquest = true },
+		["rogues"] 		= { roomid =    "-1", noquest = true },
+		["xunti"] 		= { roomid =    "-1", noquest = true },
+		
+		["challenge"]	= { roomid =    "-1", noquest = true },		-- Normally inaccessible areas, or which lack a sensible starting room.
+		["immhomes"]	= { roomid =    "-1", noquest = true },
+		["lasertwo"]	= { roomid =    "-1", noquest = true },
+		["limbo"]		= { roomid =    "-1", noquest = true },
+		["lualand"]		= { roomid =    "-1", noquest = true },
+		["midgaard"]	= { roomid =    "-1", noquest = true },
+		["oldclanone"] 	= { roomid =    "-1", noquest = true },
+		["oldclantwo"] 	= { roomid =    "-1", noquest = true },
+		["oldclanthr"] 	= { roomid =    "-1", noquest = true },
+		["oldclanfou"] 	= { roomid =    "-1", noquest = true },
+		["vault"]		= { roomid =    "-1", noquest = true },
+		["warzone"]		= { roomid =    "-1", noquest = true },
+		["wolfmaze"]	= { roomid =    "-1", noquest = true },	
+	}
+	
+	function init_plugin()
+		if not IsConnected() then return end
+		if (init_called == 0) then
+			BroadcastPlugin(680, "0")
+			Execute("sendgmcp request char")
+			char_status = gmcp("char.status")
+			init_called = 1
+			Execute("xset suspend page size")
+		elseif (init_called == 1) then
+			Execute("sendgmcp request char")
+			EnableTimer("tim_init_plugin", false)
+			init_called = 2
+			Send_GMCP_Packet("request room")
+			SendNoEcho("area keywords 1 300")
+		end
+	end
+	
+		-------- AREA LEVEL INDEX FUNCTIONS -------
+	function area_index_start()		-- called by trigger for "Showing areas from 0 to 300" line at start of areas list.
+		DebugNote("area_index_start")
+		area_range = {}
+		ColourNote("#FF5000", "", "*** Indexing area levels... - new version")
+	end
+
+	function area_index_line(name, line, wildcards)			-- called by trigger reacting to the output lines from the areas list.
+		local areaName = Trim(wildcards.areaName)
+		local arid = Trim(wildcards.arid)
+		local minLvl = tonumber(Trim(wildcards.min)) or 1
+		local maxLvl = tonumber(Trim(wildcards.max)) or 201
+		local levelLock = tonumber(Trim(wildcards.lock)) or 0
+		if areaDefaultStartRooms[arid] then
+			if (areaDefaultStartRooms[arid].noquest) then
+				-- do nothing, we don't want to add noquest areas to the index
+			else
+				area_range[areaName] = { arid = arid, min = minLvl, max = maxLvl, lock = levelLock }
+			end
+		else
+			ColourNote("#802800", "", "*** Missing default start room - " .. areaName)
+		end
+	end
+
+	function area_index_end(name, line, wildcards)
+		ColourNote("#FF5000", "", "\n*** Area levels indexed!")
+		DoAfterSpecial(1.0, "xset resume page size", sendto.execute)
+		Execute("cp info")
+		DoAfterSpecial(0.2, "cp ch", sendto.execute)
+	end
+	
+	function option_set_xcp_mode(name, line, wildcards)
+			local opt = wildcards.option or ""
+			local opttab = {
+				["ht"] = "ht - do hunt trick",
+				["qw"] = "qw - do quick where",
+				["off"] = "off - no additional action",
+				}
+			--{ "ht" = "ht - do hunt trick", "qw" = "qw - do quick where", "off" = "off - no additional action"}
+			if (opt == "ht") or (opt == "qw") or (opt == "off") then
+				option_xcp_mode = opt
+				SetVariable("mcvar_option_xcp_mode", opt)
+				ColourNote("#40C040", "", "Set 'xcp' mode to: " .. opttab[opt] .. ".")
+			elseif (opt == "") then
+				ColourNote("#FF5000", "", "Current 'xcp' mode: " .. opttab[option_xcp_mode] .. ".")
+				ColourNote("#FF5000", "", "Syntax: 'xcp mode [ht|qw|off]'")
+			else
+				ColourNote("#FF5000", "", "Invalid 'xcp' mode given.  Syntax: 'xcp mode [ht|qw|off]'")
+			end
+			print("")
+	end
+	
+	function OnPluginBroadcast (msg, id, name, text)
+		if (id == plugin_id_gmcp_handler) then							-- GMCP Handler plugin
+			if (text == "room.info") then
+				local p = currentRoom
+				local c = currentRoom
+				c.rmid = gmcp("room.info.num") or "-1"
+				if (IsTimer("done_moving") == error_code.eOK) then			-- Stall timer every time we move
+					ResetTimer("done_moving")
+				end
+				if c.arid ~= gmcp("room.info.zone") then			-- gmcp request of area also gets room.info, so only request area if it has changed AND we are
+					c.arid = gmcp("room.info.zone")					-- done moving.  Otherwise we would continuously get room gmcp and piss off Lasher.
+					if (IsTimer("done_moving") ~= error_code.eOK) then		-- We have changed areas, create the timer if it doesn't exist		
+						AddTimer("done_moving", 0, 0, .5, "", timer_flag.Enabled + timer_flag.OneShot, "done_moving")
+					end																														
+				end
+				currentRoom = c
+				previousRoom = p
+				
+			elseif (text == "room.area") then
+				currentRoom.areaname = gmcp("room.area.name")
+				
+			elseif (text == "char.status") then
+				res, gmcparg = CallPlugin(plugin_id_gmcp_handler,"gmcpval","char.status")
+				luastmt = "gmcpdatacharstatus = " .. gmcparg
+				assert (loadstring (luastmt or "")) ()
+				char_status = gmcpdatacharstatus
+			end
+			
+		elseif (id == plugin_id_search_destroy) then
+			if (msg == 675) then	-- cp type
+				cp_type = text
+			elseif(msg == 676) then
+				cp_level_taken = tonumber(text)
+			end
+		end
+	end
+	
+	function done_moving()
+		Send_GMCP_Packet("request area")
+	end
+	
+	function set_speed(name, line, wildcards)
+		if (wildcards.speed ~= "") then
+			speed = wildcards.speed
+		else
+			if (speed == "walk") then
+				speed = "run"
+			else
+				speed = "walk"
+			end
+		end
+		ColourNote("#FF5000", "", "Move speed:" .. speed)
+	end
+
+	function move_trigger(name, line, wildcards)
+		if (wildcards.roomid ~= "") then
+			move(wildcards.roomid, wildcards.speed)
+		end	
+	end
+
+	function move(rmid, temp_speed)
+		if (temp_speed == nil or temp_speed == "") then
+			temp_speed = speed
+		end
+		if (temp_speed == "walk") then
+			Note("walking to " .. rmid)
+			Execute("mapper walkto " .. rmid)
+		else
+			Execute("mapper goto " .. rmid)
+		end
+	end
+	
+	local last_cp_check = os.clock()
+
+	function xcp_mob_killed()	
+		BroadcastPlugin(680, "0")
+		gvar_xcp_index = 0
+		Execute("cp ch")
+	end
+
+
+	function xcp_retry()
+		EnableTrigger("trg_xcp_retry", false)
+		Execute("xcp " .. gvar_xcp_index)
+	end
+
+	function start_new_cp()
+		
+	end
+	
+	local cp_check_list = {}
+	local cp_check_index = 1
+	function cp_check_start(name, line, wildcards)
+		local time_check = os.clock()					-- prevent double cp checks from different plugins
+		if ((time_check - last_cp_check) < 1.0) then
+			return
+		end
+		last_cp_check = time_check
+		cp_check_list = {}
+		cp_check_index = 1
+		cpList = {}
+		cpIndex = 1
+		Send("cp ch")
+	end
+	
+	function cp_check_line(name, line, wildcards)
+		local mob = wildcards.mob
+		local loc = wildcards.loc
+		local is_dead = (wildcards.isdead == "" and "no" or "yes")
+		cp_check_list[cp_check_index] =  { mob = mob, loc = loc, is_dead = is_dead, ord = cp_check_index}
+		cp_check_index = cp_check_index + 1
+	end
+
+	function cp_check_end(name, line, wildcards)
+		build_cp_target_list(cp_check_list)
+		--tprint(cp_check_list)
+	end
+
+	local cp_target_list = {}
+	function build_cp_target_list(t)	-- t = cp_check_list
+		cp_target_list = {}
+		local area_sql = 
+			" SELECT '' as roomid, '' as roomName, uid as arid, name as areaName, 'area' as type, '' as info " ..
+			" FROM areas " ..
+			" WHERE name = %s " ..
+			" ORDER BY arid ASC "
+		local room_sql = 
+				" SELECT r.uid as roomid, r.name as roomName, a.uid as arid, a.name as areaName, 'room' as type, info " ..
+				" FROM rooms r " ..
+				" INNER JOIN areas a ON r.area = a.uid " ..
+				" WHERE r.name = %s "
+
+		if cp_type == "area" then
+			local worldPath = GetInfo(66)..Trim(sanitize_filename(WorldName()))
+			local db = assert(sqlite3.open(worldPath .. ".db"))
+			local row_index = 0
+			for i,v in ipairs (t) do
+				local row_count = 0
+				local select = string.format(area_sql, fixsql(v.loc))
+				for row in db:nrows(select) do
+					row_count = row_count + 1
+					row_index = row_index + 1
+					cp_target_list[row_index] = {
+						mob = v.mob,
+						arid = row.arid,
+						is_dead = v.is_dead,
+						type = "area",
+						ord = row_index	}
+				end
+				if (row_count == 0) then
+					row_index = row_index + 1
+					cp_target_list[row_index] = {mob = v.mob, location = area_range[v.loc].arid or "BUG!", is_dead = v.is_dead, type = "unknown_area", ord = row_index}
+				end
+			end
+		
+		elseif cp_type == "room" then
+			local worldPath = GetInfo(66)..Trim(sanitize_filename(WorldName()))
+			local db = assert(sqlite3.open(worldPath .. ".db"))
+			local row_index = 0
+			local lastMobSignature = ""
+			local player_level = tonumber(gmcp("char.status.level"))
+			for i,v in ipairs (t) do
+				local row_count = 0
+				local select = string.format(room_sql, fixsql(v.loc), fixsql(v.loc))
+				for row in db:nrows(select) do
+					local min = (area_range[row.areaName].min) or 1
+					local max = (area_range[row.areaName].max) or 300
+					row_count = row_count + 1
+					local mobSignature = row.areaName .. "|" .. v.mob
+					if (lastMobSignature ~= mobSignature) then
+						if (cp_level_taken >= (min - 0)) and (cp_level_taken <= (max + 30)) then
+							row_index = row_index + 1
+							cp_target_list[row_index] = {
+								mob = v.mob,		
+								roomid = row.roomid,
+								arid = row.arid,
+								roomName = row.roomName,
+								is_dead = v.is_dead,
+								minlvl = min,
+								maxlvl = max,
+								info = row.info,
+								type = ((v.is_dead == "no") and "room" or "area"),	-- deals with dead mobs when area contains roomnames same as area name
+								ord = row_index	}
+						else
+							local link = string.format("Ignoring due to level : %s in '%s' (%s) [%s-%s]", v.mob, row.roomName, row.arid, min, max)
+							Hyperlink("xm move " .. row.roomid, link, "Move to room " .. row.roomid, "Khaki", "black", 0)
+							print("")
+						end
+					end
+					lastMobSignature = mobSignature
+				end
+				if (row_count == 0) then
+					if (v.is_dead == "yes") then
+						local select = string.format(area_sql, fixsql(v.loc))
+						for row in db:nrows(select) do
+							row_index = row_index + 1
+							cp_target_list[row_index] = {mob = v.mob, arid = row.arid, is_dead = "yes", type = "area", ord = row_index}
+						end
+					else
+						row_index = row_index + 1
+						cp_target_list[row_index] = {mob = v.mob, location = v.loc, is_dead = v.is_dead, type = "unknown_room", ord = row_index}
+					end
+				end
+			end
+			
+		elseif cp_type == "none" then
+			-- should never be called but who knows
+		end
+		local ser = serialize.save_simple(cp_target_list)
+		BroadcastPlugin(669, ser)
+		print_cp_target_links(cp_target_list, "xcp")
+	end
+
+	function print_cp_target_links(list, command)		-- show the list of target links from cp check (not the same as 'go' links)
+		lastMobSignature = ""	--reset signature for next search
+		if (USER_show_help == "true") then
+			ColourNote("Gray", "", "\n------------------------------------------------------------------------------------------")
+		end
+		local index = 0
+		for i,v in ipairs (list) do
+			index = index + 1
+			local mobText = v.mob
+			local deadFlag
+			local is_dead = v.is_dead
+			local link
+			local linkhelp
+			local notehelp = "Show notes for item " .. i
+			local color
+			if (is_dead == "yes") then
+				mobText = mobText .. " [Dead]"
+				deadFlag = true
+			end
+			
+			if (v.type == "area") then
+				link = string.format(" %2d  %s - %s", padRight(i, 6, " "), padRight(mobText, 30, " "), padRight(v.arid, 10, " "))
+				linkhelp = "Target cp mob " .. i .. " - " .. mobText .. " (" .. v.arid .. ")"
+				color = ((is_dead == "yes") and "#383838" or "#E0E0E0")	-- dark grey, very light grey
+				Hyperlink("xcp " .. i, link, linkhelp, color, "", 0)
+				Hyperlink("roomnote area " .. v.arid, "  [notes]", notehelp, ((is_dead == "yes") and "#383838" or "lightgreen"), "", 0)
+			elseif (v.type == "room") then
+				local roomText = "'" .. v.roomName .. "' (" .. v.roomid .. ")"
+				link = string.format(" %2d  %s - %s %s [%d+]", padRight(i, 4, " "), padRight(mobText, 30, " "), padRight(v.arid, 10, " "), padRight(roomText, 40, " "), v.minlvl)
+				linkhelp = "Target cp mob " .. i .. " - " .. mobText .. " (" .. v.arid .. ")"
+				color = ((is_dead == "yes") and "#383838" or "#E0E0E0")	-- dark grey, very light grey
+				Hyperlink("xcp " .. i, link, linkhelp, color, "", 0)
+			elseif (v.type == "unknown_area") then
+				link = string.format(" %2d  %s - area '%s' not in mapper db", padRight(i, 4, " "), padRight(mobText, 30, " "), v.location)
+				linkhelp = "Area not found in mapper database"
+				color = ((is_dead == "yes") and "#900000" or "#FF0000")	-- dark red, bright red
+				Hyperlink(" ", link, linkhelp, color, "", 0)
+			elseif (v.type == "unknown_room") then
+				link = string.format(" %2d  %s - room '%s' not in mapper db", padRight(i, 4, " "), padRight(mobText, 30, " "), v.location)
+				linkhelp = "Room not found in mapper database."
+				color = ((is_dead == "yes") and "#900000" or "#FF0000")	-- dark red, bright red
+				Hyperlink(" ", link, linkhelp, color, "", 0)
+			end		
+			print("")
+		end
+		if (index == 0) then
+			ColourNote("#FF5000", "", "   No campaign items to show.  (If this appears to be a bug, do 'areas 1 300 keywords')")
+		end
+		if (USER_show_help == "true") then
+			ColourNote("Gray", "", "------------------------------------------------------------------------------------------")
+			ColourNote("Gray", "", "Type '" .. command .. " <index>' or click link to go to that target.")
+		end
+	end
+			
+--			if (link ~= "") then
+--				local linkhelp = "Target cp mob " .. i .. " - " .. mobText .. "(" .. v.arid .. ")"
+--				Hyperlink(command .. " " .. i, link, linkhelp, color, "", 0)
+--			end
+--			if (v.type == "area") then
+	--			local notehelp = "Show notes for item " .. i
+	--			Hyperlink("roomnote area " .. v.arid , "  [notes]", notehelp, ((is_dead == "yes") and "#383838" or "lightgreen"), "", 0)
+--			end
+
+	function player_not_on_cp(name, line, wildcards)
+		DebugNote("player_not_on_cp")
+		EnableTrigger("trg_cp_check_line", false)
+		EnableTrigger("trg_cp_check_end", false)
+		EnableTrigger("trg_xcp_retry", false)
+		EnableTrigger("trg_campaign_type", false)
+		cp_type = "none"
+		SetVariable("mcvar_cp_type", cp_type)
+		cp_check_list = {}
+		cp_check_index = 1
+		cp_target_list = {}
+		cpList = {}
+		gvar_xcp_index = 0
+		local ser = serialize.save_simple(cp_target_list)
+		BroadcastPlugin(669, ser)	-- send blank cp target list to GUI to clear the display
+		BroadcastPlugin(680, "0")	-- send xcp index to GUI to enable correct link highlighting
+	end
+	
+	function goto_number(name, line, wildcards)		-- called by "go" / "goto" command
+		gotoIndex = tonumber(wildcards.id) or 1
+		if (gotoList[gotoIndex] ~= nil) then
+			if (tonumber(gotoList[gotoIndex]) == nil) then
+				Execute("xrt " .. gotoList[gotoIndex])
+				Execute("qs")
+			else
+				next_room = gotoList[gotoIndex]
+				goto_room(gotoList[gotoIndex])
+				Execute("qs")
+			end
+		else
+			ColourNote("#FF5000", "", "Goto next (go) aborted - No destination yet.")
+		end
+	end
+
+	function goto_next(name, line, wildcards)		-- called by "nx" command
+		if (next_room == nil) or (next_room == "") or (next_room == -1) then
+			ColourNote("#FF5000", "", "Goto next (nx) aborted - No data yet.")
+			return
+		end
+		if (tonumber(next_room) == tonumber(currentRoom.rmid)) and (gotoIndex < #gotoList) then
+			gotoIndex = gotoIndex + 1
+		end
+		if gotoList[gotoIndex] then
+			ColourNote("#40C040", "", "Next room (nx) - " .. gotoIndex .. " of " .. #gotoList)
+			next_room = gotoList[gotoIndex]
+			Execute("xmapper move " .. next_room)
+			Execute("qs")
+		else
+			ColourNote("#FF5000", "", "Goto next (nx) aborted - No more rooms.")
+		end
+	end	
+
+	function goto_previous(name, line, wildcards)	-- called by "nx-" command
+		if (next_room == nil) or (next_room == "") or (not tonumber(next_room)) then
+			ColourNote("#FF5000", "", "Goto previous (nx-) aborted - No data yet.")
+			return
+		end
+		if (tonumber(next_room) == tonumber(currentRoom.rmid)) and (gotoIndex > 1) then
+			gotoIndex = gotoIndex - 1
+		end
+		if gotoList[gotoIndex] then
+			ColourNote("#40C040", "", "Previous room (nx-) - " .. gotoIndex .. " of " .. #gotoList)
+			next_room = gotoList[gotoIndex]
+			Execute("xmapper move " .. next_room)
+			Execute("qs")
+		else
+			ColourNote("#FF5000", "", "Goto previous (nx-) aborted - No more rooms.")
+		end
+	end	
+	
+	function goto_room(rmid)
+		local dest_in_vidblain = is_vidblain_area(rmid)
+		local both_in_vidblain = dest_in_vidblain and is_vidblain_area(currentRoom.rmid)
+		if (dest_in_vidblain == true) and (is_vidblain_area(currentRoom.rmid) == false) then
+			Execute("mapper goto 11910")
+			Execute("enter hole")
+			local func = function() Execute("xmapper move " .. rmid .. " walk") end
+			execute_in_area("vidblain_hack", "vidblain", func)
+		elseif (dest_in_vidblain == true) and (is_vidblain_area(currentRoom.rmid) == true) then
+			Execute("xmapper move " .. rmid .. " walk")
+		else
+			Execute("xmapper move " .. rmid)
+		end
+	end
+
+	local is_vidblain_area_sql =  
+		"SELECT area " ..
+		"FROM rooms " ..
+		"WHERE uid = %s "
+
+	function is_vidblain_area(roomid)
+		if (USER_check_vidblain == "false") then
+			return false
+		end
+		local worldPath = GetInfo(66) .. Trim(sanitize_filename(WorldName()))
+		local db = assert(sqlite3.open(worldPath .. ".db"))
+		local select = string.format (is_vidblain_area_sql, fixsql(roomid))
+		for row in db:nrows(select) do
+			local arid = row.area
+			if (arid == "vidblain" or
+				arid == "darklight" or
+				arid == "imperial" or
+				arid == "omentor" or
+				arid == "sendhian") then
+				db:close_vm()
+				return true
+			end
+		end		
+		db:close_vm()
+		return false
+	end
+	
+	function xcp_goto_list_item(name, line, wildcards)
+		local index = tonumber(wildcards.index) or 1
+		local cp_list = cp_target_list
+		if (cp_list[index] and (wildcards.index == "")) then
+			while (cp_list[index].is_dead == "yes") do
+				if cp_list[index+1] then
+					index = index + 1
+				else
+					index = 1
+					break
+				end
+			end
+		end		
+		local localItem = cp_list[index]
+		local localRoom = currentRoom
+		gvar_xcp_index = index
+		gotoList = {}
+		gotoIndex = 1
+		BroadcastPlugin(680, index)		-- tells GUI plugin to color the current target
+		if (cp_list[index]) and (localRoom ~= nil) and (localRoom.arid ~= nil) then
+			--DebugTPrint("goto_list_item - localItem", localItem)
+			if (localItem.type == "area") then	-- Area cp links - "xcp" goes to target area, then runs Hunt Trick to get target room.
+				remote_guess_mob_name(localItem.mob, localItem.arid, true)
+				if (localRoom.arid ~= localItem.arid) then	-- if you're not in target area, xrunto target area.
+					Execute("xrt " .. localItem.arid)
+				end
+				if (option_xcp_mode == "ht") then		-- xcp runs to area, then does automatic hunt trick.
+					local func = function() Execute("x_ht " .. localItem.mob) end
+					execute_in_area("goto_list_item_area", localItem.arid, func)
+				elseif (option_xcp_mode == "qw") then	-- xcp runs to area, then does automatic quick where.
+					local func = function() Execute("x_qw " .. localItem.mob) end
+					execute_in_area("goto_list_item_area", localItem.arid, func)
+				elseif (option_xcp_mode == "off") then	-- xcp runs to area, but takes no other action.
+					ColourNote("#FF5000", "", "Xcp mode is off - no additional action")
+					print("")
+				end
+			else 	-- Room cp links - "xcp" gets target room id from mapper db, but doesn't move anywhere.  "go" takes you to target room.
+				remote_guess_mob_name(localItem.mob, localItem.arid, true)
+				search_rooms(localItem.roomName .. "|" .. localItem.arid, "area", localItem.mob)
+			end
+		else
+			ColourNote("#FF5000", "", "No item exists, or data busy -> trying again")
+			EnableTrigger("trg_xcp_retry", true)
+		end
+	end
+
+	local xrun_to_sql_uid =  
+		"SELECT r.uid, r.name as room, r.area " ..
+		"FROM rooms r " ..		
+		"WHERE r.area like %s " ..
+		"ORDER BY r.name "
+	local xrun_to_sql_name =  
+		"SELECT r.uid, r.name as room, r.area " ..
+		"FROM rooms r " ..
+		"INNER JOIN areas a ON a.uid = r.area " ..
+		"WHERE r.area like %s OR a.name like %s " ..
+		"ORDER BY r.name "
+	
+	function xrun_to(name, line, wildcards)
+		local destination = wildcards.loc
+		local worldPath = GetInfo(66)..Trim(sanitize_filename(WorldName()))		-- finds your mapper database
+		local db = assert(sqlite3.open(worldPath .. ".db"))		-- opens your mapper db
+		if (destination == "ft2") then destination = "ftii" end	-- HACK for ftii (allows one to 'xrt ft2' as well as 'xrt ftii')
+		local startRoom = get_start_room(destination)			-- Check for xset marked room
+		if (startRoom == "-1") then		-- area has no start room defined.
+			ColourNote("#FF5000", "", "X-runto: There is no default start room defined for area '" .. destination .. "'.\n")
+			SendNoEcho("areas 1 299 keywords " .. destination)
+		else	-- start room is either 'xset marked' or has a preset default, so we'll go there.
+			ColourNote("#FF5000", "", "X-runto: " .. destination .. ", room ID: " .. startRoom .. " (" .. start_room_type .. ")\n")
+			goto_room(startRoom)
+		end			
+	end
+
+	function xset_pk(name, line, wildcards)
+		if (showPK == "true") then
+			showPK = "false"
+		else
+			showPK = "true"
+		end
+		SetVariable("showPK", showPK)
+		ColourNote("#FF5000", "", "Show PK room flag : " .. showPK)
+	end
+
+	function xset_to_mark(name, line, wildcards)
+		areaStartRooms[currentRoom.arid] = { areaname = currentRoom.areaname, roomid = currentRoom.rmid }
+		ColourNote("#FF5000", "", "\n" .. currentRoom.rmid .. " set as starting room for " .. currentRoom.arid .. "\n")
+		SetVariable("areaStartRooms", serialize.save_simple(areaStartRooms))
+	end
+	
+	function get_start_room(area_id)
+		local arid = string.lower(area_id)		
+		start_room_type = "xset mark"					-- If 'xset mark' was set, xrunto will go there.
+		if (areaStartRooms[arid] ~= nil) then 			-- Function exits as soon as any 'return' statement is encountered.
+			return areaStartRooms[arid].roomid			-- Exact match on area id
+		end
+		for k,v in pairs (areaStartRooms) do			
+			if (string.match(string.lower(k), arid) ~= nil) then 				
+				return v.roomid	-- string match on key
+			end
+		end
+		start_room_type = "default"						-- If 'xset mark' isn't set, look up start room from the table areaDefaultStartRooms.
+		if (areaDefaultStartRooms[arid] ~= nil) then 	-- Note, Upper/Lower Planes have the same default room.  More development needed here.	
+			return areaDefaultStartRooms[arid].roomid	-- exact match on area id
+		end
+		for k,v in pairs (areaDefaultStartRooms) do
+			if (string.match(string.lower(k), arid) ~= nil) then 				
+				return v.roomid	-- string match on key
+			end
+		end		
+		return "-1"
+	end															
+
+	---- room notes --------
+	function room_note_area(name, line, wildcards)
+		if (wildcards.arid == "") then
+			get_notes(currentRoom.arid, nil)
+		else
+			get_notes(wildcards.arid, nil)
+		end
+	end
+
+	function room_note(name, line, wildcards)
+		get_notes(nil, currentRoom.rmid)
+	end
+
+	function get_notes(arid, roomid, text_only)
+		local worldPath = GetInfo(66)..Trim(sanitize_filename(WorldName()))
+		local db = assert(sqlite3.open(worldPath .. ".db"))
+		local sql =  " SELECT b.uid, b.notes "
+		sql = sql .. " FROM bookmarks b "
+		if (arid ~= nil) then
+			sql = sql .. " INNER JOIN rooms r ON b.uid = r.uid "
+			sql = sql .. " WHERE r.area = " .. fixsql(arid)
+		else
+			sql = sql .. " WHERE b.uid = " .. fixsql(roomid)
+		end
+		sql = sql .. " ORDER BY b.uid "
+		DebugNote(sql)
+		local index = 0
+		if (arid ~= nil) then
+			Simulate("\nNotes for " .. getAreaName(arid) .. "\n")
+		end
+		for row in db:nrows(sql) do
+			index = index + 1
+			if (text_only == true) then
+				local line = string.format("    note:'%s'", row.notes)
+				Hyperlink("xmapper move " .. row.uid, line, "go to room " .. row.uid, "lightblue", "black", 0)		
+			else
+				local line = string.format("    (%s) %s", row.uid, row.notes)
+				Hyperlink("xmapper move " .. row.uid, line, "go to room " .. row.uid, "lightblue", "black", 0)
+				print("")
+			end		
+		end
+		db:close_vm()
+		if (arid ~= nil and index == 0 and text_only ~= true) then
+			Simulate("\tNo notes.\n")
+		end
+	end
+
+	function getRoomByMob(mobName)
+		local worldPath = GetInfo(66)..Trim(sanitize_filename(WorldName()))
+		local db = assert(sqlite3.open(worldPath .. ".db"))
+		local sql =  "SELECT roomid, mobname, count "
+		sql = sql .. "FROM mobs "
+		sql = sql .. "WHERE mobname = %s "
+		sql = sql .. "ORDER BY count desc "
+		for row in db:nrows(string.format (sql, fixsql(uid))) do
+			db:close_vm()
+			return row.name
+		end
+		db:close_vm()
+	end
+
+	function getAreaName(uid)
+		local worldPath = GetInfo(66)..Trim(sanitize_filename(WorldName()))
+		local db = assert(sqlite3.open(worldPath .. ".db"))
+		local sql =  "SELECT name FROM areas WHERE uid = %s"
+		for row in db:nrows(string.format (sql, fixsql(uid))) do
+			db:close_vm()
+			return row.name
+		end
+		db:close_vm()
+		return uid
+	end
+
+	function getAreaUid(name)
+		local worldPath = GetInfo(66)..Trim(sanitize_filename(WorldName()))
+		local db = assert(sqlite3.open(worldPath .. ".db"))
+		local sql =  "SELECT uid FROM areas WHERE name = %s order by uid "
+		local areas = {}
+		local index = 0
+		DebugNote("getAreaUid:" .. fixsql(name))
+		for row in db:nrows(string.format (sql, fixsql(name))) do
+			DebugNote(row.uid .. ":" .. name)
+			index = index + 1
+			areas[index] = {uid = row.uid, name = name}
+		end
+		db:close_vm()
+		return areas
+	end
+
+	function map_area(name, line, wildcards)
+		search_rooms(wildcards.loc, 'area', wildcards.mob)
+	end
+
+	function map_area_all(name, line, wildcards)
+		search_rooms(wildcards.loc .. "|all", 'all', wildcards.mob)
+	end
+	
+	local search_rooms_sql = 
+		"SELECT r.uid as uid, r.name as name, info, r.area as area, " ..
+		"ifnull(a.name, r.area) as area_name, 1 as DisplayOrder " .. 
+		"FROM rooms r " ..
+		"LEFT OUTER JOIN areas a ON r.area = a.uid " ..
+		"WHERE r.name = %s " ..
+		"AND (%s = 'all' OR (a.name = %s OR r.area = %s)) " ..
+		"UNION " ..
+		"SELECT r.uid, r.name, info, r.area, " ..
+		"ifnull(a.name, r.area) as area_name, 0 as DisplayOrder " .. 
+		"FROM rooms r " ..
+		"LEFT OUTER JOIN areas a ON r.area = a.uid " ..
+		"WHERE r.name <> %s " ..
+		"AND r.name LIKE %s " .. 
+		"AND (%s = 'all' OR (a.name = %s OR r.area = %s)) " ..
+		"ORDER BY Area, DisplayOrder DESC "
+	
+	function search_rooms(room, searchType, fullMobName)
+		DebugNote("search_rooms(" .. room .."," .. searchType .. "," .. fullMobName .. ")")
+		if (room == nil or room == "") then
+			Note("map_area() error : room is not known")
+			return
+		end
+		-- room|area
+		local parts = split(room, "[^|]+") -- pipe delimited
+		local room = parts[1]
+		local area_id
+		if (#parts == 2) then
+			area_id = parts[2]
+		else
+			if (currentRoom ~= nil) then
+				area_id = currentRoom.arid
+			else
+				ColourNote("#FF5000", "", "Area not known, falling back to mapper list")
+				Execute("mapper list " .. parts[1])
+			end
+		end
+		if (room == nil) then
+			Note("map_area() - Room not known")
+			return
+		end
+		like = "%"..room.."%"
+		-- i forget what this does? Strip out a leading " ?
+		--if string.sub(room,1,1) == "\"" and string.sub(room,-1) == "\"" then
+		--	like = string.sub(room,2,-2)
+		--end
+		local select = string.format(search_rooms_sql, 
+			fixsql(room), 
+			fixsql(area_id), 
+			fixsql(area_id), 
+			fixsql(area_id), 
+			fixsql(room), 
+			fixsql(like), 
+			fixsql(area_id), 
+			fixsql(area_id), 
+			fixsql(area_id))
+		DebugNote(select)
+		local worldPath = GetInfo(66)..Trim(sanitize_filename(WorldName()))
+		local db = assert(sqlite3.open(worldPath .. ".db"))
+		local results = {}
+		local roomid_list = {}
+		for row in db:nrows(select) do
+			local id = (tonumber(row.uid) or -1)	-- sanitize text room ids for "unmappable" rooms that are now being mapped
+			results[#results + 1] = { 
+				uid = id, 
+				name = row.name,
+				info = row.info,
+				area = row.area_name,
+				arid = row.area or row.area_name -- make safe against bad dbs			
+			}
+			if (id > 0) then	-- make a list of room ids
+				roomid_list[#roomid_list + 1] = id
+			end
+		end   -- finding rooms
+		db:close_vm()
+		local mob_mapping = {}
+		local freq_total = mob_mapping[-1] or 0
+		DebugNote("freq_total:" .. freq_total)
+		for i,v in ipairs (results) do	-- add mob to room mapping
+			local freq = mob_mapping[v.uid]
+			if (freq ~= nil) then
+				v.freq = math.floor((freq / freq_total) * 100)
+			else
+				v.freq = 0
+			end	
+		end
+		print_rooms(results)
+	end
+	
+	function IPRINT_ROOMS(json)
+		-- load serialize.save_simple data
+		luastmt = "gPrintRooms = " .. json
+		assert (loadstring (luastmt or "")) ()
+		print_rooms(gPrintRooms)
+	end
+
+	function print_rooms(results)	-- Display list of 'go' links from hunt-trick, quick-where, etc.
+		gotoList = {}
+		mapper_area_index = 0
+		local last_area = ""
+		DebugTPrint("results", results)
+		if (USER_show_help == "true") then
+			ColourNote("Gray", "", "\nIndex    Location     (uid)")
+			ColourNote("Gray", "", "------------------------------------------------------------")
+		end
+		for i,v in ipairs (results) do
+			DebugNote("area: " .. v.arid )
+			if (last_area ~= v.arid) then
+				if (mapper_area_index == 0) then
+					local areaLine = string.format("~~~ %2d   %s", mapper_area_index, v.arid)
+					Hyperlink("go " .. mapper_area_index, areaLine, "go to area " .. v.arid, "silver", "black", 0)
+					gotoList[mapper_area_index] = v.arid
+					mapper_area_index = mapper_area_index + 1
+				else
+					local areaLine = string.format("~~~   %s", v.arid)
+					Hyperlink("xrt " .. v.arid, areaLine, "go to area " .. v.arid, "silver", "black", 0)
+				end				
+				print("")
+				last_area = v.arid				
+			end
+			local line1 = string.format("~~~ %2d   ", mapper_area_index)
+			Hyperlink("go " .. mapper_area_index, line1, "go to item " .. mapper_area_index, "lightblue", "black", 0)
+		--	-- mob name? 
+		--	if (v.mobname ~= nil) then
+		--		local mobline = padRight(v.mobname .. " ", 20, " ")
+		--		Hyperlink("go " .. mapper_area_index, mobline, "2go to item " .. mapper_area_index, "snow", "black", 0)
+		--	end
+			local line2 = string.format("%s  (%s) ", padRight(string.gsub(v.name, "@[a-zA-Z]", ""), 20, " "), v.uid)
+			Hyperlink("go " .. mapper_area_index, line2, "go to item " .. mapper_area_index, "lightblue", "black", 0)
+			-- mob to room
+			if (v.freq > 0) then
+				ColourTell ("#FF5000", "black", " (" .. v.freq .. "%) ")
+			end
+			Hyperlink("mapper where " .. v.uid, "   {?}", "click for speedwalk to this room", "LightSteelBlue ", "black", 0)
+			gotoList[mapper_area_index] = v.uid
+			print("")
+			mapper_area_index = mapper_area_index + 1
+		end
+		if (mapper_area_index == 0) then ColourNote("#FF5000", "", "No matching rooms found.") end
+		if (USER_show_help == "true") then
+			ColourNote("Gray", "", "------------------------------------------------------------")
+			ColourNote("Gray", "", "Type 'go <index>' or click link to go to that room.")
+		end
+		
+	end
+
+	local cp_simulate_toggle = 0
+	function cp_simulate(name, line, wildcards)	
+		Simulate("\n")	
+		if (cp_simulate_toggle == 0) then
+			Simulate("You still have to kill * Isscheburqua (Insanitaria)\n")
+			Simulate("You still have to kill * a rook citizen (Avian Kingdom)\n")
+			Simulate("You still have to kill * Lea, the farmer's daughter (Farmyard)\n")
+			Simulate("You still have to kill * a rook citizen (Nesting Home)\n")
+			Simulate("You still have to kill * a demon school student (The School of Horror)\n")
+			Simulate("You still have to kill * a hookle fish (Black Lagoon)\n")
+			Simulate("You still have to kill * Harry (Unknown Tower - Dead)\n")
+			Simulate("You still have to kill * a former court jester (The Labyrinth)\n")
+			Simulate("You still have to kill * Parent (The Kitchen)\n")
+			Simulate("You still have to kill * a wealth redistribution specialist (Empyrean, Streets of Downfall)\n")
+			Simulate("You still have to kill * the reaching thorns (Eternal Autumn)\n")
+			Simulate("You still have to kill * Redtooth (Mossflower Wood - Dead)\n")
+			Simulate("You still have to kill * Castle Guard (Rebellion of the Nix)\n")
+			Simulate("You still have to kill * Jules (The Amazon Nation)\n")
+			Simulate("You still have to kill * an earth fiend (The Broken Halls of Horath)\n")
+			Simulate("You still have to kill * the spirit of Bakarne (The Empire of Aiighialla)\n")
+			Simulate("You still have to kill * Elfgar Sous-Fled (Some Place)\n")
+			Simulate("You still have to kill * the heart of a sandstorm (Living Mines of Dak'Tai)\n")
+			cp_simulate_toggle = 1
+		else
+			Simulate("You still have to kill * a former court jester (The Labyrinth)\n")
+			Simulate("You still have to kill * the heart of a sandstorm (Buried in the Great Desert's unrelenting dunes)\n")
+			Simulate("You still have to kill * Parent (The Kitchen)\n")
+			Simulate("You still have to kill * a rhino seraph (A Corridor of Cinnamon and Silver)\n")
+			Simulate("You still have to kill * A sprite prisoner (A cell)\n")
+		
+			cp_simulate_toggle = 0
+		end
+		Simulate("Note: Dead means that the target is dead, not that you have killed it.\n")
+		Simulate("\n")
+		Simulate("You have 6 days, 23 hours and 56 minutes left to finish this campaign.\n")
+		Simulate("\n")	
+	end
+
+	------ Execute in Area ------
+	local execute_in_area_array = {}
+	function execute_in_area(id, arid, functionPointer)
+		execute_in_area_array[id] = { arid = arid, func = functionPointer, index = 0, active = true, lastState = 3, standIndex = 0 }	--lastState = 3 = standing
+		--tprint(execute_in_area_array)																										--standIndex = # of stands in a row (?)
+		EnableTimer("execute_in_area_timer", true)
+	end
+
+	function execute_in_area_tick(name, line, wildcards)
+		local localRoom = currentRoom
+		local localState
+		if (localRoom == nil) then		-- thread safety
+			DebugNote("Unknown Room")
+			return
+		end
+		if (char_status == nil) then
+			DebugNote("Unknown char status")
+			return
+		else
+			localState = tonumber(char_status.state)
+		end
+		local isActive = false
+		--tprint(execute_in_area_array)
+		for index, v in pairs(execute_in_area_array) do
+			DebugNote("loop - " .. index)
+			if (v.active == true) then
+				v.index = v.index + 1
+				if (v.index > 100) then
+					v.active = false
+					print("** aborting quickwhere timer for " .. index .. ", took too long to get to destination")
+				else
+					DebugNote("state:" .. localState .. ",:" .. v.arid .. "==" .. localRoom.arid)
+					if ((localState == 3 and v.lastState == 3) and v.arid == localRoom.arid) then
+						v.index = v.index + 1	-- skip first timer tick
+						v.standIndex = v.standIndex + 1
+						if (v.standIndex < 2) then
+							DebugNote("skip - index:" .. v.index)
+						else
+							DebugNote("executing - index:" .. v.index)
+							v.func()
+							v.active = false						
+						end
+					else	-- still moving.. reset index
+						v.standIndex = 0
+					end
+				end
+			end
+			v.lastState = localState
+			if (v.active == true) then
+				isActive = true
+			end
+		end
+		if (isActive == false) then		-- no timer items active.. disable
+			DebugNote("disable timer")
+			EnableTimer("execute_in_area_timer", false)
+		end
+	end
+
+	----------- EXTERNAL CALLOUTS -----------------------------
+	function remote_guess_mob_name(mobName, arid, broadcast)
+		DebugNote("remote_guess_mob_name call:" .. mobName .. ":" .. arid)
+		local rc, mobGuess, subMob = CallPlugin(
+			plugin_id_search_destroy, 
+			"IGuessMobNameBroadcast", 
+			mobName,
+			arid)
+		if (subMob ~= nil) then
+			DebugNote(subMob)
+		end
+		DebugNote("remote_guess_mob_name return:" .. mobGuess)
+		return mobGuess
+	end
+
+	------ Utils ------
+	function padRight(text, length, padChar)
+		local padding = length - string.len(text)
+		for i = 1, padding do
+			text = text .. padChar
+		end
+		return text
+	end
+
+	function sanitize_filename(str)
+		str = string.gsub(str, "[^%w%s()_-]", "")
+		return str
+	end
+
+	function quote(str)
+		return "\""..str.."\""
+	end
+
+	function dbcheck(code)
+		if code ~= sqlite3.OK and    -- no error
+			code ~= sqlite3.ROW and   -- completed OK with another row of data
+			code ~= sqlite3.DONE then -- completed OK, no more rows
+			local err = db:errmsg ()  -- the rollback will change the error message
+			db:exec("ROLLBACK")      -- rollback any transaction to unlock the database
+			error (err, 2)            -- show error in caller's context
+		end
+	end
+
+	function fixsql(s)
+		if s then
+			return "'" .. (string.gsub (s, "'", "''")) .. "'" -- replace single quotes with two lots of single quotes
+		else
+			return "NULL"
+		end
+	end
+
+	function fixbool(b)
+		if b then
+			return 1
+		else
+			return 0
+		end
+	end
+
+	function spairs(t, f)
+		local a = {}
+		for n in pairs(t) do 
+			table.insert(a, n)
+		end
+		table.sort(a, f)
+		local i = 0      -- iterator variable
+		local iter = function ()   -- iterator function
+			i = i + 1
+			if a[i] == nil then
+				return nil
+			else
+				return a[i], t[a[i]]
+			end
+		end
+		return iter
+    end
+	
+	function split(line, delim)
+		local result = {}
+		local index = 1
+		for token in string.gmatch(line, delim) do
+			result[index] = token
+			index = index + 1
+		end
+		return result
+	end
+
+	function set_check_vidblain(name, line, wildcards)
+	  if (USER_check_vidblain == "true") then
+		USER_check_vidblain = "false"
+	  else
+		USER_check_vidblain = "true"
+	  end
+	  local msg = "off"
+	  if (USER_check_vidblain == "true") then
+		msg = "on"
+	  end
+	  ColourNote ("#FF5000", "", "No-portal vidblain assistance: " .. msg)
+	end
+
+	function OnPluginSaveState()
+		SetVariable("XRunToCheckVidblain", USER_check_vidblain)
+	end
+
+	--------- Sql Execution ------------
+	function RunSql(name, line, wildcards)
+		local worldPath = GetInfo(66)..Trim(sanitize_filename(WorldName()))
+		local db = assert(sqlite3.open(worldPath .. ".db"))
+		local index = 0
+		local sql = wildcards.sql
+		ColourNote("#FF5000", "", "running :" .. sql)
+		for row in db:nrows(sql) do
+			index = index + 1
+			print("----------- record " .. index .. " -----------" )
+			tprint(row)
+	--		print (serialize.save ("row", row))
+		end
+		db:close_vm()
+	end
+
+	function ExecSql (name, line, wildcards)
+		local worldPath = GetInfo(66)..Trim(sanitize_filename(WorldName()))
+		local db = assert(sqlite3.open(worldPath .. ".db"))
+		Note("executing " .. wildcards.sql)
+	--	dbcheck (db:execute (fixsql(wildcards.sql)))
+		db:execute(fixsql(wildcards.sql))
+		db:close_vm()
+		Note("ok")
+	end
+
+--	*************** DEBUG ***************
+	function ext_debug(name, line, wildcards)
+		if (showDebug == 0) then
+			showDebug = 1
+		else
+			showDebug = 0
+		end
+		Note("Ext debug:" .. showDebug)
+	end	
+
+	function ext_print(name, line, wildcards)
+		print(wildcards.data)
+		if wildcards.data == "area_range" then
+			tprint(area_range)
+		elseif wildcards.data == "areaIndex" then
+			tprint(areaIndex)
+		elseif wildcards.data == "areaStartRooms" then
+			tprint(areaStartRooms)
+		elseif wildcards.data == "cpList" then
+			tprint(cpList)
+		else
+			print("Ext print: Option not available.")
+		end
+	end
+	
+	function DebugNote(text)
+		if (showDebug == 1) then
+			Note("Extender ~ " .. text)
+		end
+	end
+
+	function DebugTPrint(title, obj)
+		if (showDebug == 1) then
+			DebugNote(title .. " : " .. serialize.save_simple(obj))
+		end
+	end
+	-------------- INSTALL MESSAGE ------------------
+	function InstallMessage()
+		ColourNote("MediumSeaGreen", "", "\n+=======================================================+")
+		ColourNote("MediumSeaGreen", "", "+ Mapper Extender v1.3.5 installed successfully         +")
+		ColourNote("MediumSeaGreen", "", "+=======================================================+\n")
+	end
+	InstallMessage()
+]]>
+</script>
+</muclient>
+<!-- BUGS
+-->
