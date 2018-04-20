@@ -851,8 +851,8 @@ MAPPER EXTENDER USAGE:
 				if (IsTimer("done_moving") == error_code.eOK) then			-- Stall timer every time we move
 					ResetTimer("done_moving")
 				end
-				if c.arid ~= gmcp("room.info.zone") then			-- gmcp request of area also gets room.info, so only request area if it has changed AND we are
-					c.arid = gmcp("room.info.zone")					-- done moving.  Otherwise we would continuously get room gmcp and piss off Lasher.
+				if c.arid ~= gmcp("room.info.zone") then			-- gmcp request of area also gets room.info, so only request area if it has changed AND we
+					c.arid = gmcp("room.info.zone")					-- are done moving.  Otherwise we would continuously get room gmcp and piss off Lasher.
 					if (IsTimer("done_moving") ~= error_code.eOK) then		-- We have changed areas, create the timer if it doesn't exist		
 						AddTimer("done_moving", 0, 0, .5, "", timer_flag.Enabled + timer_flag.OneShot, "done_moving")
 					end																														
@@ -953,8 +953,9 @@ MAPPER EXTENDER USAGE:
 	end
 
 	function cp_check_end(name, line, wildcards)
-		build_cp_target_list(cp_check_list)
 		--tprint(cp_check_list)
+		build_cp_target_list(cp_check_list)
+		--tprint(cp_target_list)
 	end
 
 	local cp_target_list = {}
@@ -1003,12 +1004,12 @@ MAPPER EXTENDER USAGE:
 				local row_count = 0
 				local select = string.format(room_sql, fixsql(v.loc), fixsql(v.loc))
 				for row in db:nrows(select) do
-					local min = (area_range[row.areaName].min) or 1
-					local max = (area_range[row.areaName].max) or 300
+					local local_minlvl = (area_range[row.areaName].min) or 1
+					local local_maxlvl = (area_range[row.areaName].max) or 300
 					row_count = row_count + 1
 					local mobSignature = row.areaName .. "|" .. v.mob
 					if (lastMobSignature ~= mobSignature) then
-						if (cp_level_taken >= (min - 0)) and (cp_level_taken <= (max + 30)) then
+						if (cp_level_taken >= (local_minlvl - 0)) and (cp_level_taken <= (local_maxlvl + 30)) then
 							row_index = row_index + 1
 							cp_target_list[row_index] = {
 								mob = v.mob,		
@@ -1016,13 +1017,13 @@ MAPPER EXTENDER USAGE:
 								arid = row.arid,
 								roomName = row.roomName,
 								is_dead = v.is_dead,
-								minlvl = min,
-								maxlvl = max,
+								minlvl = local_minlvl,
+								maxlvl = local_maxlvl,
 								info = row.info,
 								type = ((v.is_dead == "no") and "room" or "area"),	-- deals with dead mobs when area contains roomnames same as area name e.g. Aardington Estates
 								ord = row_index	}
 						else	-- area containing roomname is outside level ranges
-							local link = string.format("Ignoring due to level : %s in '%s' (%s) [%s-%s]", v.mob, row.roomName, row.arid, min, max)
+							local link = string.format("Ignoring due to level : %s in '%s' (%s) [%s-%s]", v.mob, row.roomName, row.arid, local_minlvl, local_maxlvl)
 							Hyperlink("xm move " .. row.roomid, link, "Move to room " .. row.roomid, "Khaki", "black", 0)
 							print("")
 						end
@@ -1218,18 +1219,38 @@ MAPPER EXTENDER USAGE:
 	end
 	
 	function xcp_goto_list_item(name, line, wildcards)
-		local index = tonumber(wildcards.index) or 1
+		local index = tonumber(wildcards.index) or "-1"
 		local cp_list = cp_target_list
-		if (cp_list[index] and (wildcards.index == "")) then
+		if cp_type == "none" then
+			ColourNote("#FF8800", "", "\nSearch and Destroy: 'xcp' aborted - you are not currently on a cp.\n")
+			return
+		end
+		if (index == "-1") then		-- if no argument given, skip over dead mobs, and mobs whose location can't be found in mapper db.
+			index = 1
+			while (cp_list[index].type == "unknown_area") or (cp_list[index].type == "unknown_room") do
+				if cp_list[index+1] then
+					index = index + 1
+				else
+					ColourNote("#FF8800", "", "\nSearch and Destroy: 'xcp' aborted - mapper db has no location for any remaining target.\n")
+					return
+				end
+			end
 			while (cp_list[index].is_dead == "yes") do
 				if cp_list[index+1] then
 					index = index + 1
 				else
-					index = 1
 					break
 				end
 			end
-		end		
+		end
+		if (index > #cp_list) or (index == 0) then	-- abort if user gives an index that doesn't exist, or if the mapper doesn't have a location for it.
+			ColourNote("#FF8800", "", "\nSearch and Destroy: 'xcp' aborted - that target (".. index .. ") doesn't exist.\n")
+			return
+		elseif (cp_list[index].type == "unknown_area") or (cp_list[index].type == "unknown_room") then
+			ColourNote("#FF8800", "", "\nSearch and Destroy: 'xcp' aborted - mapper db has no location for that target (".. index .. ").\n")
+			return
+		end
+
 		local localItem = cp_list[index]
 		local localRoom = currentRoom
 		gvar_xcp_index = index
