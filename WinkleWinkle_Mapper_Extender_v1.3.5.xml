@@ -97,19 +97,17 @@ MAPPER EXTENDER USAGE:
 <!--  Timers  -->
 <timers>
 	<timer
+		second="1.0"
 		name="tim_init_plugin"
 		script="init_plugin"
-		enabled="y"
-		second="1"
-		>
+		enabled="y" >
 	</timer>
 	
 	<timer
+		second="0.25"
 		name="execute_in_area_timer"
 		script="execute_in_area_tick"
-		enabled="n"
-		second="0.25"
-		>
+		enabled="n" >
 	</timer>
 </timers>
 
@@ -119,24 +117,19 @@ MAPPER EXTENDER USAGE:
 	<alias
 		match="^ext debug$"
 		script="ext_debug"
-		name="ali_toggle_debug"
-		enabled="y" regexp="y" sequence="100" ignore_case="y"
-		>
+		enabled="y" regexp="y" sequence="100" ignore_case="y" >
 	</alias>
 
 	<alias
 		match="^ext print (?<data>.+)$"
 		script="ext_print"
-		name="ext_print_data"
-		enabled="y" regexp="y" sequence="100" ignore_case="y"
-		>
+		enabled="y" regexp="y" sequence="100" ignore_case="y" >
 	</alias>	
 	
 		<!-- help section, need to redo this -->
 	<alias 
 		match="^(?:ww|extender) help$"
-		enabled="y" regexp="y" sequence="100" ignore_case="y" send_to="12" keep_evaluating="y"		
-		>
+		enabled="y" regexp="y" sequence="100" ignore_case="y" send_to="12" keep_evaluating="y" >
 		<send>ColourNote("MediumSeaGreen", "", GetPluginInfo (GetPluginID (), 3))</send>
 	</alias>
 
@@ -144,51 +137,43 @@ MAPPER EXTENDER USAGE:
 	<alias
 		match="^xset pk$"
 		script="xset_pk"
-		name="ali_set_pk"
-		enabled="y" regexp="y" sequence="100" ignore_case="y"
-		>
+		enabled="y" regexp="y" sequence="100" ignore_case="y" >
 	</alias>
 
 	<alias 
 		match="^xset mark$"
 		script="xset_to_mark"
-		enabled="y" regexp="y" sequence="100" ignore_case="y"
-		>
+		enabled="y" regexp="y" sequence="100" ignore_case="y" >
 	</alias>
 
 	<alias 
 		match="^xset vidblain$"
 		script="set_check_vidblain"
-		enabled="y" regexp="y" sequence="99" ignore_case="y"		
-		>
+		enabled="y" regexp="y" sequence="99" ignore_case="y" >
 	</alias>
 	
 	<alias 
 		match="^xcp mode(?: (?<option>ht|qw|off))?$"
 		script="option_set_xcp_mode"
-		enabled="y" regexp="y" sequence="100" ignore_case="y" send_to="12"		
-		>
+		enabled="y" regexp="y" sequence="100" ignore_case="y" send_to="12" >
 	</alias>
 
 	<alias
 		match="^(?:xrt|xrun|xrunto) (?<loc>.+)$"
 		script="xrun_to"
-		enabled="y" regexp="y" sequence="100" ignore_case="y"
-		>
+		enabled="y" regexp="y" sequence="100" ignore_case="y" >
 	</alias>
 
 	<alias 
 		match="^xcp( (?<index>[0-9]+))?$"
 		script="xcp_goto_list_item"
-		enabled="y" regexp="y" sequence="100" ignore_case="y"
-		>
+		enabled="y" regexp="y" sequence="100" ignore_case="y" >
 	</alias>
 	
 	<alias 
 		match="^cp (?<arg>ch|check|test)$"
 		script="cp_check_start"
-		enabled="y" regexp="y" sequence="100" ignore_case="y" send_to="12"
-		>
+		enabled="y" regexp="y" sequence="100" ignore_case="y" send_to="12" >
 		<send>
 			EnableTrigger("trg_cp_check_line", true)
 		</send>
@@ -197,84 +182,77 @@ MAPPER EXTENDER USAGE:
 	<alias 
 		match="^(?:go|goto)( (?<id>[0-9]+))?$"
 		script="goto_number"
-		enabled="y" regexp="y" sequence="100" ignore_case="y"
-		>
+		enabled="y" regexp="y" sequence="100" ignore_case="y" keep_evaluating="y" >
 	</alias>
 
 	<alias 
 		match="^nx$"
 		script="goto_next"
-		enabled="y" regexp="y" sequence="100" ignore_case="y"
-		>
+		enabled="y" regexp="y" sequence="100" ignore_case="y" >
 	</alias>
 	
 	<alias 
 		match="^nx-$"
 		script="goto_previous"
-		enabled="y" regexp="y" sequence="100" ignore_case="y"
-		>
+		enabled="y" regexp="y" sequence="100" ignore_case="y" >
 	</alias>
 
 	<!-- speed -->
 	<alias
 		match="^xset speed ?(?<speed>run|walk)?$"
 		script="set_speed"
-		enabled="y" regexp="y" sequence="100" ignore_case="y"
-		>
+		enabled="y" regexp="y" sequence="100" ignore_case="y" >
 	</alias>
 	
 	<alias
 		match="^(?:xmapper|xmap|xm) move (?<roomid>[0-9]+) ?(?<speed>run|walk)?$"
 		script="move_trigger"
-			enabled="y" regexp="y" sequence="95" ignore_case="y"
-		>
+			enabled="y" regexp="y" sequence="95" ignore_case="y" >
 	</alias>
 	
 	<alias
 		match="^xm(?:\ {(?<mob>[^\}]+)\})? (?<loc>.+)$"
 		script="map_area"
-		enabled="y" regexp="y" sequence="100" ignore_case="y"
-		>
+		enabled="y" regexp="y" sequence="100" ignore_case="y" >
 	</alias>
 
 	<alias
 		match="^xmal?l?(?:\ {(?<mob>[^\}]+)\})? (?<loc>.+)$"
 		script="map_area_all"
-		enabled="y" regexp="y" sequence="99" ignore_case="y"
-		>
+		enabled="y" regexp="y" sequence="99" ignore_case="y" >
 	</alias>
 	
 	<!-- roomnotes -->
 	<alias
 		match="^r(?:oomnote|n)$"
 		script="room_note"
-		enabled="y" regexp="y" sequence="100" ignore_case="y"
-		>
+		enabled="y" regexp="y" sequence="100" ignore_case="y" >
 	</alias>
 
 	<alias
 		match="^r(?:oomnote|n) a(?:rea)?(?: (?<arid>.+))?$"
 		script="room_note_area"
-		enabled="y" regexp="y" sequence="99" ignore_case="y"
-		>
+		enabled="y" regexp="y" sequence="99" ignore_case="y" >
 	</alias>
 
 	<!-- Sql Execution -->
 	<alias 
 		match="^runsql (?<sql>.+)$"
 		script="RunSql"
-		name="runsql"
-		enabled="y" regexp="y" sequence="1" ignore_case="y"
-		>
+		enabled="y" regexp="y" sequence="1" ignore_case="y" >
 	</alias>
 
     <alias
 		match="^execsql (?<sql>.+)$"
 		script="ExecSql"
-		name="execsql"
-		enabled="y" regexp="y" sequence="1" ignore_case="y"
-		>
+		enabled="y" regexp="y" sequence="1" ignore_case="y" >
     </alias>
+	
+	<alias
+		match="^simulate cp$"
+		script="cp_simulate"
+		enabled="y" regexp="y" sequence="1" ignore_case="y" >
+		</alias>
 </aliases>
 
 <triggers>
@@ -282,8 +260,7 @@ MAPPER EXTENDER USAGE:
 	<trigger
 		match="^.+ tells you \'Good luck in your campaign\!\'$"
 		name="trg_cp_request" group="trg_campaign"
-		enabled="y"	regexp="y" sequence="100" keep_evaluating="y" send_to="12"
-		>
+		enabled="y"	regexp="y" sequence="100" keep_evaluating="y" send_to="12" >
 		<send>EnableTrigger("trg_xcp_retry", false)</send>
 	</trigger>
 
@@ -291,16 +268,14 @@ MAPPER EXTENDER USAGE:
 		match="^Congratulations, that was one of your CAMPAIGN mobs\!$"
 		script="xcp_mob_killed"
 		name="trg_cp_mob_killed" group="trg_campaign"
-		enabled="y"	regexp="y" sequence="100" keep_evaluating="y" send_to="12"
-		>
+		enabled="y"	regexp="y" sequence="100" keep_evaluating="y" send_to="12" >
 	</trigger>
 
 	<trigger
 		match="^You still have to kill \* (?<mob>[^(]+) \((?<loc>.+?)(?<isdead> - Dead)?\)$"
 		script="cp_check_line"
 		name="trg_cp_check_line" group="trg_campaign"
-		enabled="n"	regexp="y" sequence="500" omit_from_output="y" send_to="12"
-		>
+		enabled="n"	regexp="y" sequence="500" omit_from_output="y" send_to="12" >
 		<send>
 			EnableTrigger("trg_cp_check_end", true)
 		</send>
@@ -310,8 +285,7 @@ MAPPER EXTENDER USAGE:
 		match="^(?!You still have to kill \*)"
 		script="cp_check_end"
 		name="trg_cp_check_end" group="trg_campaign"
-		enabled="n"	regexp="y" sequence="500" omit_from_output="n" send_to="12"
-		>
+		enabled="n"	regexp="y" sequence="500" omit_from_output="n" send_to="12" >
 		<send>
 			EnableTrigger("trg_cp_check_line", false)
 			EnableTrigger("trg_cp_check_end", false)
@@ -322,8 +296,7 @@ MAPPER EXTENDER USAGE:
 		match="^You are not currently on a campaign\.$"
 		script="player_not_on_cp"
 		name="trg_player_not_on_cp" group="trg_campaign"
-		enabled="y"	regexp="y" sequence="100" send_to="12"
-		>
+		enabled="y"	regexp="y" sequence="100" send_to="12" >
 
 	</trigger>
 	
@@ -331,24 +304,21 @@ MAPPER EXTENDER USAGE:
 		match="^You have (?:(?:\d+ day(?:s)?, )?\d+ hour(?:s)? and )?\d+ minute(?:s)? left to finish this campaign\.$"
 		script="xcp_retry"
 		name="trg_xcp_retry" group="trg_campaign"
-		enabled="n"	regexp="y" sequence="100" keep_evaluating="y"
-		>
+		enabled="n"	regexp="y" sequence="100" keep_evaluating="y" >
 	</trigger>
 
 	<trigger
 		match="^Note\: One or more target names in this campaign might be slightly scrambled\.$"
 		script=""
 		name="trg_cp_check_scrambled_gag" group="trg_campaign"
-		enabled="y" regexp="y" sequence="100" keep_evaluating="y" omit_from_output="y"
-		>
+		enabled="y" regexp="y" sequence="100" keep_evaluating="y" omit_from_output="y" >
 	</trigger>	
 	
 	<trigger
 		match="^Note\: Dead means that the target is dead, not that you have killed it\.$"
 		script=""
 		name="trg_cp_check_dead_gag" group="trg_campaign"
-		enabled="y" regexp="y" sequence="100" keep_evaluating="y" omit_from_output="y"
-		>
+		enabled="y" regexp="y" sequence="100" keep_evaluating="y" omit_from_output="y" >
 	</trigger>
 
 	<!-- area indexing triggers -->
@@ -356,8 +326,7 @@ MAPPER EXTENDER USAGE:
 		match="^              \[ Listing all areas in range 1 to 300 \]$"
 		script="area_index_start"
 		name="trg_area_index_start"
-		enabled="y" regexp="y" sequence="100" omit_from_output="y" send_to="12"
-		>
+		enabled="y" regexp="y" sequence="100" omit_from_output="y" send_to="12" >
 		<send>
 			EnableTrigger("trg_area_index_gag_headers", true)
 			EnableTrigger("trg_area_index_gag_header_lines", true)
@@ -370,8 +339,7 @@ MAPPER EXTENDER USAGE:
 	<trigger
 		match="^From To   Lock  Keyword          Area Name"
 		name="trg_area_index_gag_headers"
-		enabled="n" regexp="y" sequence="100" omit_from_output="y" send_to="12"
-		>
+		enabled="n" regexp="y" sequence="100" omit_from_output="y" send_to="12" >
 		<send>
 			EnableTrigger("trg_area_index_gag_headers", false)
 		</send>
@@ -380,8 +348,7 @@ MAPPER EXTENDER USAGE:
 	<trigger
 		match="---- ---- ----  ---------------  ------------------------------"
 		name="trg_area_index_gag_header_lines"
-		enabled="n" regexp="n" sequence="100" omit_from_output="y" send_to="12"
-		>
+		enabled="n" regexp="n" sequence="100" omit_from_output="y" send_to="12" >
 		<send>
 			EnableTrigger("trg_area_index_gag_header_lines", false)
 		</send>
@@ -391,15 +358,13 @@ MAPPER EXTENDER USAGE:
 		match="^\s+(?<min>\d+)\s+(?<max>\d+)\s+(?<lock>\d+)?\s+?(?<arid>.+?)\s+(?<areaName>.+?)$"
 		script="area_index_line"
 		name="trg_area_index_line"
-		enabled="n" regexp="y" sequence="100" omit_from_output="y" send_to="12"
-		>
+		enabled="n" regexp="y" sequence="100" omit_from_output="y" send_to="12" >
 	</trigger>
 
 	<trigger
 		match="'Lock' means you cannot enter until you are that level or higher."
 		name="trg_area_index_gag_lock_means"
-		enabled="n" regexp="n" sequence="100" omit_from_output="y" send_to="12"
-		>
+		enabled="n" regexp="n" sequence="100" omit_from_output="y" send_to="12" >
 		<send>
 			EnableTrigger("trg_area_index_gag_lock_means", false)
 		</send>
@@ -409,8 +374,7 @@ MAPPER EXTENDER USAGE:
 		match="---------------------------------------------------------------"
 		script="area_index_end"
 		name="trg_area_index_end"
-		enabled="n" regexp="n" sequence="100" omit_from_output="y" keep_evaluating="y" send_to="12"
-		>
+		enabled="n" regexp="n" sequence="100" omit_from_output="y" keep_evaluating="y" send_to="12" >
 		<send>
 			EnableTrigger("trg_area_index_line", false)
 			EnableTrigger("trg_area_index_end", false)
@@ -447,10 +411,10 @@ MAPPER EXTENDER USAGE:
 	local plugin_id_mapper_extender = "b6eae87ccedd84f510b74715"
 	local plugin_id_search_destroy = "e50b1d08a0cfc0ee9c442001"
 
-	local area_range = {}
+	local area_range = {}	
 	local areaIndex = {}
 	local areaStartRooms = {}
-	local char_status
+	local char_state = gmcp("char.status.state") or "1"
 	local cpIndex = 1
 	local cpList = {}
 	local cp_type = GetVariable("mcvar_cp_type") or "none" -- can be "none" (not on a cp), "area", or "room"
@@ -810,10 +774,11 @@ MAPPER EXTENDER USAGE:
 	
 	function init_plugin()
 		if not IsConnected() then return end
+		if ((char_state ~= "3") and (char_state ~= "8") and (char_state ~= "9") and (char_state ~= "11")) then return end
 		if (init_called == 0) then
 			BroadcastPlugin(680, "0")
 			Execute("sendgmcp request char")
-			char_status = gmcp("char.status")
+			--char_status = gmcp("char.status")
 			init_called = 1
 			Execute("xset suspend page size")
 		elseif (init_called == 1) then
@@ -899,10 +864,7 @@ MAPPER EXTENDER USAGE:
 				currentRoom.areaname = gmcp("room.area.name")
 				
 			elseif (text == "char.status") then
-				res, gmcparg = CallPlugin(plugin_id_gmcp_handler,"gmcpval","char.status")
-				luastmt = "gmcpdatacharstatus = " .. gmcparg
-				assert (loadstring (luastmt or "")) ()
-				char_status = gmcpdatacharstatus
+				char_state = gmcp("char.status.state")
 			end
 			
 		elseif (id == plugin_id_search_destroy) then
@@ -986,7 +948,7 @@ MAPPER EXTENDER USAGE:
 		local mob = wildcards.mob
 		local loc = wildcards.loc
 		local is_dead = (wildcards.isdead == "" and "no" or "yes")
-		cp_check_list[cp_check_index] =  { mob = mob, loc = loc, is_dead = is_dead, ord = cp_check_index}
+		cp_check_list[cp_check_index] =  { mob = mob or "BUG!", loc = loc or "BUG!", is_dead = is_dead or "BUG!", ord = cp_check_index}
 		cp_check_index = cp_check_index + 1
 	end
 
@@ -1017,7 +979,7 @@ MAPPER EXTENDER USAGE:
 				local row_count = 0
 				local select = string.format(area_sql, fixsql(v.loc))
 				for row in db:nrows(select) do
-					row_count = row_count + 1
+					row_count = 1
 					row_index = row_index + 1
 					cp_target_list[row_index] = {
 						mob = v.mob,
@@ -1026,7 +988,7 @@ MAPPER EXTENDER USAGE:
 						type = "area",
 						ord = row_index	}
 				end
-				if (row_count == 0) then
+				if (row_count == 0) then	-- area name wasn't found in mapper db
 					row_index = row_index + 1
 					cp_target_list[row_index] = {mob = v.mob, location = area_range[v.loc].arid or "BUG!", is_dead = v.is_dead, type = "unknown_area", ord = row_index}
 				end
@@ -1037,7 +999,6 @@ MAPPER EXTENDER USAGE:
 			local db = assert(sqlite3.open(worldPath .. ".db"))
 			local row_index = 0
 			local lastMobSignature = ""
-			local player_level = tonumber(gmcp("char.status.level"))
 			for i,v in ipairs (t) do
 				local row_count = 0
 				local select = string.format(room_sql, fixsql(v.loc), fixsql(v.loc))
@@ -1058,9 +1019,9 @@ MAPPER EXTENDER USAGE:
 								minlvl = min,
 								maxlvl = max,
 								info = row.info,
-								type = ((v.is_dead == "no") and "room" or "area"),	-- deals with dead mobs when area contains roomnames same as area name
+								type = ((v.is_dead == "no") and "room" or "area"),	-- deals with dead mobs when area contains roomnames same as area name e.g. Aardington Estates
 								ord = row_index	}
-						else
+						else	-- area containing roomname is outside level ranges
 							local link = string.format("Ignoring due to level : %s in '%s' (%s) [%s-%s]", v.mob, row.roomName, row.arid, min, max)
 							Hyperlink("xm move " .. row.roomid, link, "Move to room " .. row.roomid, "Khaki", "black", 0)
 							print("")
@@ -1075,7 +1036,7 @@ MAPPER EXTENDER USAGE:
 							row_index = row_index + 1
 							cp_target_list[row_index] = {mob = v.mob, arid = row.arid, is_dead = "yes", type = "area", ord = row_index}
 						end
-					else
+					else	-- room wasn't found in mapper db
 						row_index = row_index + 1
 						cp_target_list[row_index] = {mob = v.mob, location = v.loc, is_dead = v.is_dead, type = "unknown_room", ord = row_index}
 					end
@@ -1143,15 +1104,6 @@ MAPPER EXTENDER USAGE:
 			ColourNote("Gray", "", "Type '" .. command .. " <index>' or click link to go to that target.")
 		end
 	end
-			
---			if (link ~= "") then
---				local linkhelp = "Target cp mob " .. i .. " - " .. mobText .. "(" .. v.arid .. ")"
---				Hyperlink(command .. " " .. i, link, linkhelp, color, "", 0)
---			end
---			if (v.type == "area") then
-	--			local notehelp = "Show notes for item " .. i
-	--			Hyperlink("roomnote area " .. v.arid , "  [notes]", notehelp, ((is_dead == "yes") and "#383838" or "lightgreen"), "", 0)
---			end
 
 	function player_not_on_cp(name, line, wildcards)
 		DebugNote("player_not_on_cp")
@@ -1620,10 +1572,10 @@ MAPPER EXTENDER USAGE:
 		
 	end
 
-	local cp_simulate_toggle = 0
-	function cp_simulate(name, line, wildcards)	
+	local cp_simulate_toggle = "0"
+	function cp_simulate(name, line, wildcards)
 		Simulate("\n")	
-		if (cp_simulate_toggle == 0) then
+		if (cp_simulate_toggle == "0") then
 			Simulate("You still have to kill * Isscheburqua (Insanitaria)\n")
 			Simulate("You still have to kill * a rook citizen (Avian Kingdom)\n")
 			Simulate("You still have to kill * Lea, the farmer's daughter (Farmyard)\n")
@@ -1642,7 +1594,7 @@ MAPPER EXTENDER USAGE:
 			Simulate("You still have to kill * the spirit of Bakarne (The Empire of Aiighialla)\n")
 			Simulate("You still have to kill * Elfgar Sous-Fled (Some Place)\n")
 			Simulate("You still have to kill * the heart of a sandstorm (Living Mines of Dak'Tai)\n")
-			cp_simulate_toggle = 1
+			cp_simulate_toggle = "1"
 		else
 			Simulate("You still have to kill * a former court jester (The Labyrinth)\n")
 			Simulate("You still have to kill * the heart of a sandstorm (Buried in the Great Desert's unrelenting dunes)\n")
@@ -1650,7 +1602,7 @@ MAPPER EXTENDER USAGE:
 			Simulate("You still have to kill * a rhino seraph (A Corridor of Cinnamon and Silver)\n")
 			Simulate("You still have to kill * A sprite prisoner (A cell)\n")
 		
-			cp_simulate_toggle = 0
+			cp_simulate_toggle = "0"
 		end
 		Simulate("Note: Dead means that the target is dead, not that you have killed it.\n")
 		Simulate("\n")
@@ -1661,26 +1613,19 @@ MAPPER EXTENDER USAGE:
 	------ Execute in Area ------
 	local execute_in_area_array = {}
 	function execute_in_area(id, arid, functionPointer)
-		execute_in_area_array[id] = { arid = arid, func = functionPointer, index = 0, active = true, lastState = 3, standIndex = 0 }	--lastState = 3 = standing
+		execute_in_area_array[id] = { arid = arid, func = functionPointer, index = 0, active = true, lastState = "3", standIndex = 0 }	--lastState = 3 = standing
 		--tprint(execute_in_area_array)																										--standIndex = # of stands in a row (?)
 		EnableTimer("execute_in_area_timer", true)
 	end
 
 	function execute_in_area_tick(name, line, wildcards)
 		local localRoom = currentRoom
-		local localState
+		local localState = char_state or "1"
 		if (localRoom == nil) then		-- thread safety
 			DebugNote("Unknown Room")
 			return
 		end
-		if (char_status == nil) then
-			DebugNote("Unknown char status")
-			return
-		else
-			localState = tonumber(char_status.state)
-		end
 		local isActive = false
-		--tprint(execute_in_area_array)
 		for index, v in pairs(execute_in_area_array) do
 			DebugNote("loop - " .. index)
 			if (v.active == true) then
@@ -1690,7 +1635,7 @@ MAPPER EXTENDER USAGE:
 					print("** aborting quickwhere timer for " .. index .. ", took too long to get to destination")
 				else
 					DebugNote("state:" .. localState .. ",:" .. v.arid .. "==" .. localRoom.arid)
-					if ((localState == 3 and v.lastState == 3) and v.arid == localRoom.arid) then
+					if ((localState == "3" and v.lastState == "3") and v.arid == localRoom.arid) then
 						v.index = v.index + 1	-- skip first timer tick
 						v.standIndex = v.standIndex + 1
 						if (v.standIndex < 2) then
@@ -1892,5 +1837,3 @@ MAPPER EXTENDER USAGE:
 ]]>
 </script>
 </muclient>
-<!-- BUGS
--->
