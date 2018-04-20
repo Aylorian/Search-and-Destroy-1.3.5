@@ -28,7 +28,7 @@ Happy new year, ninjas and other fans of mine!  I'm happy to report that 1.3.5 i
     
  - Unknown target links were glitchier than expected but Mapper Extender and GUI should now handle them correctly.
  
- - The area indexing process is only allowed run when your character state is 3 (standing), 8 (fighting), 9 (asleep), or 11 (sitting or resting).  This solves any issues related to the process running at inappropriate times, e.g. while loggin in, afk, or writing a note.
+ - The area indexing process is only allowed run when your character state is 3 (standing), 8 (fighting), 9 (asleep), or 11 (sitting or resting).  This solves any issues related to the process running at inappropriate times, e.g. while logging in, afk, or writing a note.
 
  - Cp check output for room cp's is now easier to read.
   
@@ -48,8 +48,6 @@ Happy new year, ninjas and other fans of mine!  I'm happy to report that 1.3.5 i
     info and cause it to be lost.  The command 'xq' has been added which re-targets your quest mob.
  
  - Auto noexp has been updated to use GMCP config, making it about as reliable as it can get.
- 
- - 
   
  - Removed a lot of dead, orphaned, or otherwise obsolete code and triggers; improved regexp for
     various triggers, etc.; and other general cleanup.
