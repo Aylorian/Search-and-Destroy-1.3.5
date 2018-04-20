@@ -5,7 +5,7 @@ Happy new year, ninjas and other fans of mine!  I'm happy to report that 1.3.5 i
     director of process flow and occurs after cp check, rather than during.  The number of required
     mapper DB operations is reduced by roughly half and all of the post-process filtering has been
     eliminated, further improving performance and reducing ambiguity.  This should finally put an
-	end to most of the display glitches and problems that have plagued S&D since the beginning.
+	end to most of the display and link-related problems that have plagued S&D since the beginning.
   
   Additional process improvements, bug fixes, and other changes include:
  
@@ -23,15 +23,21 @@ Happy new year, ninjas and other fans of mine!  I'm happy to report that 1.3.5 i
    
  - Room names containing parentheses are now matched correctly.
   
- - Mapper Extender should no longer crash due to missing area data (e.g. as happens when new areas
+ - Mapper Extender should no longer crash due to missing area or mapper data (e.g. as happens when new areas
     are added to the game).
-  
+    
+ - Unknown target links were glitchier than expected but Mapper Extender and GUI should now handle them correctly.
+ 
+ - The area indexing process is only allowed run when your character state is 3 (standing), 8 (fighting), 9 (asleep), or 11 (sitting or resting).  This solves any issues related to the process running at inappropriate times, e.g. while loggin in, afk, or writing a note.
+
  - Cp check output for room cp's is now easier to read.
   
  - Dead targets on room cp's now display correctly.
 
  - Xcp with no argument would always target the first mob in the list, even if dead, which could
     prove unhelpful.  Xcp now targets the first mob that is alive.
+    
+ - Xcp also skips over targets whose locations are unknown.
 	
  - Xcp can now be set to automatically hunt trick, quick where, or do nothing after running to
     the target area (on area cp's).  The syntax is 'xcp mode [ht|qw|off]'.  The default has always
@@ -42,6 +48,8 @@ Happy new year, ninjas and other fans of mine!  I'm happy to report that 1.3.5 i
     info and cause it to be lost.  The command 'xq' has been added which re-targets your quest mob.
  
  - Auto noexp has been updated to use GMCP config, making it about as reliable as it can get.
+ 
+ - 
   
  - Removed a lot of dead, orphaned, or otherwise obsolete code and triggers; improved regexp for
     various triggers, etc.; and other general cleanup.
