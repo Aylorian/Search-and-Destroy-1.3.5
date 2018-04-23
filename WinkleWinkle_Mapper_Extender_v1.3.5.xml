@@ -1219,38 +1219,32 @@ MAPPER EXTENDER USAGE:
 	end
 	
 	function xcp_goto_list_item(name, line, wildcards)
-		local index = tonumber(wildcards.index) or "-1"
+		local index = tonumber(wildcards.index) or "not given"
 		local cp_list = cp_target_list
-		if cp_type == "none" then
-			ColourNote("#FF8800", "", "\nSearch and Destroy: 'xcp' aborted - you are not currently on a cp.\n")
+		if cp_type == "none" then			-- abort if not on cp
+			ColourNote("#FF8800", "", "\nSearch and Destroy: 'xcp' aborted - you're not currently on a cp.\n")
 			return
 		end
-		if (index == "-1") then		-- if no argument given, skip over dead mobs, and mobs whose location can't be found in mapper db.
-			index = 1
-			while (cp_list[index].type == "unknown_area") or (cp_list[index].type == "unknown_room") do
-				if cp_list[index+1] then
-					index = index + 1
-				else
-					ColourNote("#FF8800", "", "\nSearch and Destroy: 'xcp' aborted - mapper db has no location for any remaining target.\n")
+		if (index == "not given") then	-- xcp with no index given
+			for i,v in ipairs (cp_list) do
+				if v.is_dead == "no" and (v.type == "area" or v.type == "room") then	-- mob is alive, location is known -> go to location
+					index = i
+					break
+				elseif i == #cp_list then -- if we reach this step, all mobs are dead and/or location wasn't known.
+					ColourNote("#FF8800", "", "\nSearch and Destroy: 'xcp' aborted - lack of targets (dead, or location unknown)")
 					return
 				end
 			end
-			while (cp_list[index].is_dead == "yes") do
-				if cp_list[index+1] then
-					index = index + 1
-				else
-					break
-				end
+		else	-- xcp with index, e.g. xcp 2 
+			if (index > #cp_list) or (index < 1) then	-- abort if index doesn't exist
+				ColourNote("#FF8800", "", "\nSearch and Destroy: 'xcp' aborted - index doesn't exist (".. index .. ")\n")
+				return
+			elseif (cp_list[index].type == "unknown_area") or (cp_list[index].type == "unknown_room") then	-- abort if unknown
+				ColourNote("#FF8800", "", "\nSearch and Destroy: 'xcp' aborted - no mapper data for target (#" .. index .. ").\n")
+				return
 			end
 		end
-		if (index > #cp_list) or (index == 0) then	-- abort if user gives an index that doesn't exist, or if the mapper doesn't have a location for it.
-			ColourNote("#FF8800", "", "\nSearch and Destroy: 'xcp' aborted - that target (".. index .. ") doesn't exist.\n")
-			return
-		elseif (cp_list[index].type == "unknown_area") or (cp_list[index].type == "unknown_room") then
-			ColourNote("#FF8800", "", "\nSearch and Destroy: 'xcp' aborted - mapper db has no location for that target (".. index .. ").\n")
-			return
-		end
-
+		-- If we made it past all that, the target is valid and we have a location -> go to location
 		local localItem = cp_list[index]
 		local localRoom = currentRoom
 		gvar_xcp_index = index
