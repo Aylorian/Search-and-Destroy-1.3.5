@@ -5,9 +5,16 @@ Happy new year, ninjas and other fans of mine!  I'm happy to report that 1.3.5 i
     director of process flow and occurs after cp check, rather than during.  The number of required
     mapper DB operations is reduced by roughly half and all of the post-process filtering has been
     eliminated, further improving performance and reducing ambiguity.  This should finally put an
-	end to most of the display and link-related problems that have plagued S&D since the beginning.
+    end to most of the display and link-related problems that have plagued S&D since the beginning.
+    
+    As of 24 April there is still an intermittent crash related to the target list builder and room
+    cp's.  It happened to me once but by the time I reloaded the plugin with debug etc. something
+    had changed and would no longer crash.  Reports from others basically the same.  When I find it
+    I'll fix it.
   
   Additional process improvements, bug fixes, and other changes include:
+ 
+ - Unknown target links were glitchier than expected but Mapper Extender and GUI should now handle them correctly.
  
  - Adjusted the room cp filtering parameters to deal with high-level mobs in low level areas.  For
     example, living wall in Descent to Hell would come up as unknown because it's a level 85 mob in
@@ -25,8 +32,6 @@ Happy new year, ninjas and other fans of mine!  I'm happy to report that 1.3.5 i
   
  - Mapper Extender should no longer crash due to missing area or mapper data (e.g. as happens when new areas
     are added to the game).
-    
- - Unknown target links were glitchier than expected but Mapper Extender and GUI should now handle them correctly.
  
  - The area indexing process is only allowed run when your character state is 3 (standing), 8 (fighting), 9 (asleep), or 11 (sitting or resting).  This solves any issues related to the process running at inappropriate times, e.g. while logging in, afk, or writing a note.
 
