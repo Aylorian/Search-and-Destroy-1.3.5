@@ -315,9 +315,9 @@
 				tooltipText = "(" .. i .. ") " .. mobText .. " - " .. v.location
 				eventHandler = ""
 				if (deadFlag == false) then
-					color = "0x0000E0"
+					color = "0x0000E8"
 				else
-					color = "0x000040"
+					color = "0x000090"
 				end			
 			end
 			
