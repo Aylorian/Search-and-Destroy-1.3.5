@@ -229,7 +229,7 @@ SEARCH AND DESTROY USAGE:
 		enabled="y" regexp="y" sequence="100" ignore_case="y"
 		>
 	</alias>
-	
+
 	<!-- debug on/off command -->
 	<alias
 		match="^sd debug$"
@@ -248,7 +248,6 @@ SEARCH AND DESTROY USAGE:
 		>
 		<send>ColourNote("SteelBlue", "", GetPluginInfo (GetPluginID (), 3))</send>
 	</alias>
-
 </aliases>
 
 <triggers>
@@ -297,24 +296,28 @@ SEARCH AND DESTROY USAGE:
 
 	<!-- CAMPAIGN CHECK PROCESSING -->
 	<trigger
-		match="^You still have to kill \* (?<mob>.+) \((?<loc>.+?)(?<isdead>(?: - Dead)?)\)$"
-		script="cp_check_line"
+		match="^You still have to kill \* (?<mob>[^(]+) \((?<loc>.+?)(?<isdead> - Dead)?\)$"
+		script=""
 		name="trg_cp_check_line" group="trg_campaign"
-		enabled="y"	regexp="y" sequence="100" omit_from_output="n" send_to="12"
-		>
+		enabled="n"	regexp="y" sequence="500" omit_from_output="y" send_to="12" >
+		<send>
+			--script = cp_check_line
+			EnableTrigger("trg_cp_check_end", true)
+		</send>
 	</trigger>
 
 	<trigger
 		match="^(?!You still have to kill \*)"
-		script="cp_check_end"
+		script=""
 		name="trg_cp_check_end" group="trg_campaign"
-		enabled="n"	regexp="y" sequence="100" omit_from_output="n" send_to="12"
-		>
+		enabled="n"	regexp="y" sequence="500" omit_from_output="n" send_to="12" >
 		<send>
+			--script = cp_check_end
 			EnableTrigger("trg_cp_check_line", false)
 			EnableTrigger("trg_cp_check_end", false)
 		</send>
 	</trigger>
+
 
 	<!-- CAMPAIGN STATUS TRACKING -->
 	<trigger
@@ -353,8 +356,7 @@ SEARCH AND DESTROY USAGE:
 		match="^You have (?:(?:\d+ day(?:s)?, )?\d+ hour(?:s)? and )?\d+ minute(?:s)? left to finish this campaign\.$"
 		script="player_is_on_cp"
 		name="trg_player_is_on_cp"
-		enabled="y" regexp="y" sequence="100" keep_evaluating="y" send_to="12"
-		>
+		enabled="y" regexp="y" sequence="100" keep_evaluating="y" send_to="12" >
 	</trigger>
 
 	<!-- HUNT TRICK -->
@@ -362,24 +364,21 @@ SEARCH AND DESTROY USAGE:
 		match="^You are (?:almost )?certain that .+ is (?:north|south|east|west|up|down) from here\.|You are confident that .+ passed through here, heading (?:north|south|east|west|up|down)\.|The trail of .+ is confusing, but you're reasonably sure .+ headed (?:north|south|east|west|up|down)\.|There are traces of .+ having been here. Perhaps they lead (?:north|south|east|west|up|down)\?|You have no idea what you\'re doing\, but maybe .+ is (?:north|south|east|west|up|down)\?|You couldn\'t find a path to .+ from here\.|.+ is here\!$"
 		script="hunt_trick_continue"
 		name="trg_hunt_trick_continue_dir" group="HuntTrick"
-		enabled="n" regexp="y" sequence="100"
-		>
+		enabled="n" regexp="y" sequence="100" >
 	</trigger>
 
 	<trigger
 		match="^You are (?:almost )?certain that .+ is through .+\.|You are confident that .+ passed through here, heading through .+\.|The trail of .+ is confusing, but you're reasonably sure .+ headed through .+\.|There are traces of .+ having been here\. Perhaps they lead through .+\?|You have no idea which way .+ went\.$"
 		script="hunt_trick_continue"
 		name="trg_hunt_trick_continue_portal" group="HuntTrick"
-		enabled="n" regexp="y" sequence="100"
-		>
+		enabled="n" regexp="y" sequence="100" >
 	</trigger>
 	
 	<trigger
 		match="^You seem unable to hunt that target for some reason\.$"
 		script="hunt_trick_complete"
 		name="trg_hunt_trick_complete" group="HuntTrick"
-		enabled="n" regexp="y" sequence="100"
-		>
+		enabled="n" regexp="y" sequence="100" >
 	</trigger>
 	
 	<trigger
