@@ -119,12 +119,6 @@ MAPPER EXTENDER USAGE:
 		script="ext_debug"
 		enabled="y" regexp="y" sequence="100" ignore_case="y" >
 	</alias>
-
-	<alias
-		match="^ext print (?<data>.+)$"
-		script="ext_print"
-		enabled="y" regexp="y" sequence="100" ignore_case="y" >
-	</alias>	
 	
 		<!-- help section, need to redo this -->
 	<alias 
@@ -148,8 +142,14 @@ MAPPER EXTENDER USAGE:
 
 	<alias 
 		match="^xset vidblain$"
-		script="set_check_vidblain"
-		enabled="y" regexp="y" sequence="99" ignore_case="y" >
+		script="xset_vidblain_onoff"
+		enabled="y" regexp="y" sequence="100" ignore_case="y" >
+	</alias>
+	
+	<alias 
+		match="^xset vidblain (?<level>\d{1,3})$"
+		script="xset_vidblain_setlevel"
+		enabled="y" regexp="y" sequence="100" ignore_case="y" >
 	</alias>
 	
 	<alias 
@@ -205,7 +205,7 @@ MAPPER EXTENDER USAGE:
 	</alias>
 	
 	<alias
-		match="^(?:xmapper|xmap|xm) move (?<roomid>[0-9]+) ?(?<speed>run|walk)?$"
+		match="^(?:xmapper|xmap|xm) move (?<roomid>[0-9]+|-1) ?(?<speed>run|walk)?$"
 		script="move_trigger"
 			enabled="y" regexp="y" sequence="95" ignore_case="y" >
 	</alias>
@@ -410,36 +410,34 @@ MAPPER EXTENDER USAGE:
 	local plugin_id_extender_gui = "3f498d929793c12cb70f5999"
 	local plugin_id_mapper_extender = "b6eae87ccedd84f510b74715"
 	local plugin_id_search_destroy = "e50b1d08a0cfc0ee9c442001"
-
-	local area_range = {}	
-	local areaIndex = {}
+	
+	local area_range = {}
 	local areaStartRooms = {}
 	local char_state = gmcp("char.status.state") or "1"
 	local cpIndex = 1
-	local cpList = {}
 	local cp_type = GetVariable("mcvar_cp_type") or "none" -- can be "none" (not on a cp), "area", or "room"
 	local currentRoom = {}
-	local gotoList = {}
+	local gotoList = {}	-- list of room id's used by go, nx, nx-
 	local gotoIndex = 1
 	local gvar_xcp_index = 0
-	local init_called = 0
 	local last_area = ""
-	local last_substitute
 	local cp_level_taken = tonumber(GetVariable("mcvar_cp_level_taken")) or 0
 	local mapper_area_index = 0
 	local next_room = -1
 	local previousRoom = {}
-	local searchIndex = 0
-	local searchResult = {}
 	local showDebug = 0
-	local showPK = GetVariable("showPK") or "true"
 	local speed = "run"
 	local start_room_type
-	local xrunto_area_id
-	local USER_check_vidblain = GetVariable("XRunToCheckVidblain") or "false"
-	local USER_show_help = "true"
 	
-	local option_xcp_mode = GetVariable("mcvar_option_xcp_mode") or "ht"
+	local CONFIG_show_help = "true"
+	local CONFIG_xset_vidblain = GetVariable("mcvar_xset_vidblain_onoff") or "off"
+	local CONFIG_xcp_mode = GetVariable("mcvar_CONFIG_xcp_mode") or "ht"
+	--local areaIndex = {}
+	--local last_substitute
+	--local searchIndex = 0
+	--local searchResult = {}
+	--local showPK = GetVariable("showPK") or "true"
+	--local xrunto_area_id
 	--local USER_run_if_one_room = true
 
 	if (GetVariable("areaStartRooms") ~= nil) then			
@@ -772,6 +770,7 @@ MAPPER EXTENDER USAGE:
 		["wolfmaze"]	= { roomid =    "-1", noquest = true },	
 	}
 	
+	local init_called = 0
 	function init_plugin()
 		if not IsConnected() then return end
 		if ((char_state ~= "3") and (char_state ~= "8") and (char_state ~= "9") and (char_state ~= "11")) then return end
@@ -792,7 +791,6 @@ MAPPER EXTENDER USAGE:
 	
 		-------- AREA LEVEL INDEX FUNCTIONS -------
 	function area_index_start()		-- called by trigger for "Showing areas from 0 to 300" line at start of areas list.
-		DebugNote("area_index_start")
 		area_range = {}
 		ColourNote("#FF5000", "", "*** Indexing area levels... - new version")
 	end
@@ -823,48 +821,38 @@ MAPPER EXTENDER USAGE:
 	
 	function option_set_xcp_mode(name, line, wildcards)
 			local opt = wildcards.option or ""
-			local opttab = {
+			local options = {
 				["ht"] = "ht - do hunt trick",
 				["qw"] = "qw - do quick where",
 				["off"] = "off - no additional action",
 				}
-			--{ "ht" = "ht - do hunt trick", "qw" = "qw - do quick where", "off" = "off - no additional action"}
 			if (opt == "ht") or (opt == "qw") or (opt == "off") then
-				option_xcp_mode = opt
-				SetVariable("mcvar_option_xcp_mode", opt)
-				ColourNote("#40C040", "", "Set 'xcp' mode to: " .. opttab[opt] .. ".")
+				CONFIG_xcp_mode = opt
+				SetVariable("mcvar_CONFIG_xcp_mode", opt)
+				ColourNote("#40C040", "", "Set 'xcp' mode to: " .. options[opt] .. ".")
 			elseif (opt == "") then
-				ColourNote("#FF5000", "", "Current 'xcp' mode: " .. opttab[option_xcp_mode] .. ".")
+				ColourNote("#FF5000", "", "Current 'xcp' mode: " .. options[CONFIG_xcp_mode] .. ".")
 				ColourNote("#FF5000", "", "Syntax: 'xcp mode [ht|qw|off]'")
 			else
 				ColourNote("#FF5000", "", "Invalid 'xcp' mode given.  Syntax: 'xcp mode [ht|qw|off]'")
 			end
 			print("")
 	end
-	
+
 	function OnPluginBroadcast (msg, id, name, text)
 		if (id == plugin_id_gmcp_handler) then							-- GMCP Handler plugin
 			if (text == "room.info") then
-				local p = currentRoom
-				local c = currentRoom
-				c.rmid = gmcp("room.info.num") or "-1"
-				if (IsTimer("done_moving") == error_code.eOK) then			-- Stall timer every time we move
-					ResetTimer("done_moving")
-				end
-				if c.arid ~= gmcp("room.info.zone") then			-- gmcp request of area also gets room.info, so only request area if it has changed AND we
-					c.arid = gmcp("room.info.zone")					-- are done moving.  Otherwise we would continuously get room gmcp and piss off Lasher.
-					if (IsTimer("done_moving") ~= error_code.eOK) then		-- We have changed areas, create the timer if it doesn't exist		
-						AddTimer("done_moving", 0, 0, .5, "", timer_flag.Enabled + timer_flag.OneShot, "done_moving")
-					end																														
-				end
-				currentRoom = c
-				previousRoom = p
-				
-			elseif (text == "room.area") then
-				currentRoom.areaname = gmcp("room.area.name")
-				
+				local r = gmcp("room.info")
+				r.maze = (string.match(r.details, "maze") == "maze") and "yes" or "no"
+					previousRoom = currentRoom or {}
+					currentRoom = { rmid = r.num, arid = r.zone, maze = r.maze }
+					if (previousRoom.rmid ~= nil) and (currentRoom.rmid ~= nil) then
+					end
 			elseif (text == "char.status") then
-				char_state = gmcp("char.status.state")
+				local c = gmcp("char.status")
+				char_state = c.state
+			--elseif (text == "room.area") then		-- gets area long name from room.area, but nothing in the script requires it
+				--currentRoom.areaname = gmcp("room.area.name")
 			end
 			
 		elseif (id == plugin_id_search_destroy) then
@@ -874,10 +862,6 @@ MAPPER EXTENDER USAGE:
 				cp_level_taken = tonumber(text)
 			end
 		end
-	end
-	
-	function done_moving()
-		Send_GMCP_Packet("request area")
 	end
 	
 	function set_speed(name, line, wildcards)
@@ -894,7 +878,9 @@ MAPPER EXTENDER USAGE:
 	end
 
 	function move_trigger(name, line, wildcards)
-		if (wildcards.roomid ~= "") then
+		if (wildcards.roomid == "-1") then
+			ColourNote("#FF5000", "", "\nSearch and Destroy:  Can't go to room id -1 (nomap room)\n")
+		elseif (wildcards.roomid ~= "") then
 			move(wildcards.roomid, wildcards.speed)
 		end	
 	end
@@ -912,21 +898,15 @@ MAPPER EXTENDER USAGE:
 	end
 	
 	local last_cp_check = os.clock()
-
 	function xcp_mob_killed()	
 		BroadcastPlugin(680, "0")
 		gvar_xcp_index = 0
 		Execute("cp ch")
 	end
 
-
 	function xcp_retry()
 		EnableTrigger("trg_xcp_retry", false)
 		Execute("xcp " .. gvar_xcp_index)
-	end
-
-	function start_new_cp()
-		
 	end
 	
 	local cp_check_list = {}
@@ -939,7 +919,6 @@ MAPPER EXTENDER USAGE:
 		last_cp_check = time_check
 		cp_check_list = {}
 		cp_check_index = 1
-		cpList = {}
 		cpIndex = 1
 		Send("cp ch")
 	end
@@ -948,7 +927,7 @@ MAPPER EXTENDER USAGE:
 		local mob = wildcards.mob
 		local loc = wildcards.loc
 		local is_dead = (wildcards.isdead == "" and "no" or "yes")
-		cp_check_list[cp_check_index] =  { mob = mob or "BUG!", loc = loc or "BUG!", is_dead = is_dead or "BUG!", ord = cp_check_index}
+		cp_check_list[cp_check_index] =  { mob = mob, loc = loc, is_dead = is_dead, ord = cp_check_index}
 		cp_check_index = cp_check_index + 1
 	end
 
@@ -958,103 +937,114 @@ MAPPER EXTENDER USAGE:
 		--tprint(cp_target_list)
 	end
 
-	local cp_target_list = {}
-	function build_cp_target_list(t)	-- t = cp_check_list
-		cp_target_list = {}
-		local area_sql = 
-			" SELECT '' as roomid, '' as roomName, uid as arid, name as areaName, 'area' as type, '' as info " ..
+	local sql_build_area_target =
+		--	" SELECT '' as roomid, '' as roomName, uid as arid, name as areaName, 'area' as type, '' as info " ..
+			" SELECT uid as arid, name as areaName " ..
 			" FROM areas " ..
 			" WHERE name = %s " ..
 			" ORDER BY arid ASC "
-		local room_sql = 
-				" SELECT r.uid as roomid, r.name as roomName, a.uid as arid, a.name as areaName, 'room' as type, info " ..
-				" FROM rooms r " ..
-				" INNER JOIN areas a ON r.area = a.uid " ..
-				" WHERE r.name = %s "
-
+	local sql_build_room_target =
+			" SELECT r.uid as roomid, r.name as roomName, a.uid as arid, a.name as areaName, 'room' as type, info " ..
+			" FROM rooms r " ..
+			" INNER JOIN areas a ON r.area = a.uid " ..
+			" WHERE r.name = %s "
+	local cp_target_list = {}
+	
+	function build_cp_target_list(t)	-- t = cp_check_list
+		cp_target_list = {}
 		if cp_type == "area" then
-			local worldPath = GetInfo(66)..Trim(sanitize_filename(WorldName()))
-			local db = assert(sqlite3.open(worldPath .. ".db"))
-			local row_index = 0
-			for i,v in ipairs (t) do
-				local row_count = 0
-				local select = string.format(area_sql, fixsql(v.loc))
-				for row in db:nrows(select) do
-					row_count = 1
-					row_index = row_index + 1
-					cp_target_list[row_index] = {
-						mob = v.mob,
-						arid = row.arid,
-						is_dead = v.is_dead,
-						type = "area",
-						ord = row_index	}
-				end
-				if (row_count == 0) then	-- area name wasn't found in mapper db
-					row_index = row_index + 1
-					cp_target_list[row_index] = {mob = v.mob, location = area_range[v.loc].arid or "BUG!", is_dead = v.is_dead, type = "unknown_area", ord = row_index}
-				end
-			end
-		
+			build_area_cp_target(t)
 		elseif cp_type == "room" then
-			local worldPath = GetInfo(66)..Trim(sanitize_filename(WorldName()))
-			local db = assert(sqlite3.open(worldPath .. ".db"))
-			local row_index = 0
-			local lastMobSignature = ""
-			for i,v in ipairs (t) do
-				local row_count = 0
-				local select = string.format(room_sql, fixsql(v.loc), fixsql(v.loc))
-				for row in db:nrows(select) do
-					local local_minlvl = (area_range[row.areaName].min) or 1
-					local local_maxlvl = (area_range[row.areaName].max) or 300
-					row_count = row_count + 1
-					local mobSignature = row.areaName .. "|" .. v.mob
-					if (lastMobSignature ~= mobSignature) then
-						if (cp_level_taken >= (local_minlvl - 0)) and (cp_level_taken <= (local_maxlvl + 30)) then
-							row_index = row_index + 1
-							cp_target_list[row_index] = {
-								mob = v.mob,		
-								roomid = row.roomid,
-								arid = row.arid,
-								roomName = row.roomName,
-								is_dead = v.is_dead,
-								minlvl = local_minlvl,
-								maxlvl = local_maxlvl,
-								info = row.info,
-								type = ((v.is_dead == "no") and "room" or "area"),	-- deals with dead mobs when area contains roomnames same as area name e.g. Aardington Estates
-								ord = row_index	}
-						else	-- area containing roomname is outside level ranges
-							local link = string.format("Ignoring due to level : %s in '%s' (%s) [%s-%s]", v.mob, row.roomName, row.arid, local_minlvl, local_maxlvl)
-							Hyperlink("xm move " .. row.roomid, link, "Move to room " .. row.roomid, "Khaki", "black", 0)
-							print("")
-						end
-					end
-					lastMobSignature = mobSignature
-				end
-				if (row_count == 0) then
-					if (v.is_dead == "yes") then
-						local select = string.format(area_sql, fixsql(v.loc))
-						for row in db:nrows(select) do
-							row_index = row_index + 1
-							cp_target_list[row_index] = {mob = v.mob, arid = row.arid, is_dead = "yes", type = "area", ord = row_index}
-						end
-					else	-- room wasn't found in mapper db
-						row_index = row_index + 1
-						cp_target_list[row_index] = {mob = v.mob, location = v.loc, is_dead = v.is_dead, type = "unknown_room", ord = row_index}
-					end
-				end
-			end
-			
+			build_room_cp_target(t)
 		elseif cp_type == "none" then
 			-- should never be called but who knows
 		end
 		local ser = serialize.save_simple(cp_target_list)
-		BroadcastPlugin(669, ser)
+		BroadcastPlugin(669, ser)	-- broadcast target list to GUI for display
 		print_cp_target_links(cp_target_list, "xcp")
 	end
+	
+	function build_area_cp_target(t)
+		local worldPath = GetInfo(66)..Trim(sanitize_filename(WorldName()))
+		local db = assert(sqlite3.open(worldPath .. ".db"))
+		local row_index = 0
+		for i,v in ipairs (t) do
+			local row_count = 0
+			local select = string.format(sql_build_area_target, fixsql(v.loc))
+			for row in db:nrows(select) do
+				row_count = 1
+				row_index = row_index + 1
+				cp_target_list[row_index] = {
+					mob = v.mob,
+					arid = row.arid,
+					is_dead = v.is_dead,
+					type = "area",
+					ord = row_index	}
+			end
+			if (row_count == 0) then	-- area name wasn't found in mapper db
+				row_index = row_index + 1
+				cp_target_list[row_index] = {mob = v.mob, location = v.loc, is_dead = v.is_dead, type = "unknown_area", ord = row_index}
+			end
+		end
+	end
 
+	function build_room_cp_target(t)
+		local worldPath = GetInfo(66)..Trim(sanitize_filename(WorldName()))
+		local db = assert(sqlite3.open(worldPath .. ".db"))
+		local row_index = 0
+		local lastMobSignature = ""
+		for i,v in ipairs (t) do
+			local row_count = 0
+			local select = string.format(sql_build_room_target, fixsql(v.loc), fixsql(v.loc))
+			for row in db:nrows(select) do
+				local min_lvl = (area_range[row.areaName].min) or 1
+				local max_lvl = (area_range[row.areaName].max) or 300
+				row_count = row_count + 1
+				local mobSignature = row.areaName .. "|" .. v.mob
+				if (lastMobSignature ~= mobSignature) then
+					if (cp_level_taken >= (min_lvl + 0)) and (cp_level_taken <= (max_lvl + 30)) then
+						row_index = row_index + 1
+						cp_target_list[row_index] = {
+							mob = v.mob,
+							roomid = row.roomid,
+							arid = row.arid,
+							roomName = row.roomName,
+							is_dead = v.is_dead,
+							minlvl = min_lvl,
+							maxlvl = max_lvl,
+							info = row.info,
+							type = ((v.is_dead == "no") and "room" or "area"),	-- deals with dead mobs when area contains roomnames same as area name e.g. Aardington Estate
+							ord = row_index	}
+					else	-- area containing roomname is outside level ranges
+						local link = string.format("Ignoring due to level : %s in '%s' (%s) [%s-%s]", v.mob, row.roomName, row.arid, min_lvl, max_lvl)
+						Hyperlink("xm move " .. row.roomid, link, "Move to room " .. row.roomid, "Khaki", "", 0)
+						print("")
+					end
+				end
+				lastMobSignature = mobSignature
+			end
+			if (row_count == 0) then
+				if (v.is_dead == "yes") then
+					local select = string.format(sql_build_area_target, fixsql(v.loc))
+					for row in db:nrows(select) do
+						row_index = row_index + 1
+						cp_target_list[row_index] = {mob = v.mob, arid = row.arid, is_dead = "yes", type = "area", ord = row_index}
+					end
+					if row_count == 0 then
+						row_index = row_index + 1
+						cp_target_list[row_index] = {mob = v.mob, location = v.loc, is_dead = "yes", type = "unknown_room", ord = row_index}
+					end
+				else	-- room wasn't found in mapper db
+					row_index = row_index + 1
+					cp_target_list[row_index] = {mob = v.mob, location = v.loc, is_dead = v.is_dead, type = "unknown_room", ord = row_index}
+				end
+			end
+		end
+	end
+	
 	function print_cp_target_links(list, command)		-- show the list of target links from cp check (not the same as 'go' links)
 		lastMobSignature = ""	--reset signature for next search
-		if (USER_show_help == "true") then
+		if (CONFIG_show_help == "true") then
 			ColourNote("Gray", "", "\n------------------------------------------------------------------------------------------")
 		end
 		local index = 0
@@ -1075,14 +1065,14 @@ MAPPER EXTENDER USAGE:
 			if (v.type == "area") then
 				link = string.format(" %2d  %s - %s", padRight(i, 6, " "), padRight(mobText, 30, " "), padRight(v.arid, 10, " "))
 				linkhelp = "Target cp mob " .. i .. " - " .. mobText .. " (" .. v.arid .. ")"
-				color = ((is_dead == "yes") and "#383838" or "#E0E0E0")	-- dark grey, very light grey
+				color = ((is_dead == "yes") and "#404040" or "#E0E0E0")	-- dark grey, very light grey
 				Hyperlink("xcp " .. i, link, linkhelp, color, "", 0)
 				Hyperlink("roomnote area " .. v.arid, "  [notes]", notehelp, ((is_dead == "yes") and "#383838" or "lightgreen"), "", 0)
 			elseif (v.type == "room") then
 				local roomText = "'" .. v.roomName .. "' (" .. v.roomid .. ")"
 				link = string.format(" %2d  %s - %s %s [%d+]", padRight(i, 4, " "), padRight(mobText, 30, " "), padRight(v.arid, 10, " "), padRight(roomText, 40, " "), v.minlvl)
 				linkhelp = "Target cp mob " .. i .. " - " .. mobText .. " (" .. v.arid .. ")"
-				color = ((is_dead == "yes") and "#383838" or "#E0E0E0")	-- dark grey, very light grey
+				color = ((is_dead == "yes") and "#404040" or "#E0E0E0")	-- dark grey, very light grey
 				Hyperlink("xcp " .. i, link, linkhelp, color, "", 0)
 			elseif (v.type == "unknown_area") then
 				link = string.format(" %2d  %s - area '%s' not in mapper db", padRight(i, 4, " "), padRight(mobText, 30, " "), v.location)
@@ -1100,14 +1090,13 @@ MAPPER EXTENDER USAGE:
 		if (index == 0) then
 			ColourNote("#FF5000", "", "   No campaign items to show.  (If this appears to be a bug, do 'areas 1 300 keywords')")
 		end
-		if (USER_show_help == "true") then
+		if (CONFIG_show_help == "true") then
 			ColourNote("Gray", "", "------------------------------------------------------------------------------------------")
 			ColourNote("Gray", "", "Type '" .. command .. " <index>' or click link to go to that target.")
 		end
 	end
 
 	function player_not_on_cp(name, line, wildcards)
-		DebugNote("player_not_on_cp")
 		EnableTrigger("trg_cp_check_line", false)
 		EnableTrigger("trg_cp_check_end", false)
 		EnableTrigger("trg_xcp_retry", false)
@@ -1117,7 +1106,6 @@ MAPPER EXTENDER USAGE:
 		cp_check_list = {}
 		cp_check_index = 1
 		cp_target_list = {}
-		cpList = {}
 		gvar_xcp_index = 0
 		local ser = serialize.save_simple(cp_target_list)
 		BroadcastPlugin(669, ser)	-- send blank cp target list to GUI to clear the display
@@ -1190,33 +1178,6 @@ MAPPER EXTENDER USAGE:
 			Execute("xmapper move " .. rmid)
 		end
 	end
-
-	local is_vidblain_area_sql =  
-		"SELECT area " ..
-		"FROM rooms " ..
-		"WHERE uid = %s "
-
-	function is_vidblain_area(roomid)
-		if (USER_check_vidblain == "false") then
-			return false
-		end
-		local worldPath = GetInfo(66) .. Trim(sanitize_filename(WorldName()))
-		local db = assert(sqlite3.open(worldPath .. ".db"))
-		local select = string.format (is_vidblain_area_sql, fixsql(roomid))
-		for row in db:nrows(select) do
-			local arid = row.area
-			if (arid == "vidblain" or
-				arid == "darklight" or
-				arid == "imperial" or
-				arid == "omentor" or
-				arid == "sendhian") then
-				db:close_vm()
-				return true
-			end
-		end		
-		db:close_vm()
-		return false
-	end
 	
 	function xcp_goto_list_item(name, line, wildcards)
 		local index = tonumber(wildcards.index) or "not given"
@@ -1225,8 +1186,8 @@ MAPPER EXTENDER USAGE:
 			ColourNote("#FF8800", "", "\nSearch and Destroy: 'xcp' aborted - you're not currently on a cp.\n")
 			return
 		end
-		if (index == "not given") then	-- xcp with no index given
-			for i,v in ipairs (cp_list) do
+		if (index == "not given") then	-- xcp, no index given
+			for i,v in ipairs (cp_list) do	-- find first available target
 				if v.is_dead == "no" and (v.type == "area" or v.type == "room") then	-- mob is alive, location is known -> go to location
 					index = i
 					break
@@ -1252,19 +1213,18 @@ MAPPER EXTENDER USAGE:
 		gotoIndex = 1
 		BroadcastPlugin(680, index)		-- tells GUI plugin to color the current target
 		if (cp_list[index]) and (localRoom ~= nil) and (localRoom.arid ~= nil) then
-			--DebugTPrint("goto_list_item - localItem", localItem)
 			if (localItem.type == "area") then	-- Area cp links - "xcp" goes to target area, then runs Hunt Trick to get target room.
 				remote_guess_mob_name(localItem.mob, localItem.arid, true)
 				if (localRoom.arid ~= localItem.arid) then	-- if you're not in target area, xrunto target area.
 					Execute("xrt " .. localItem.arid)
 				end
-				if (option_xcp_mode == "ht") then		-- xcp runs to area, then does automatic hunt trick.
+				if (CONFIG_xcp_mode == "ht") then		-- xcp runs to area, then does automatic hunt trick.
 					local func = function() Execute("x_ht " .. localItem.mob) end
 					execute_in_area("goto_list_item_area", localItem.arid, func)
-				elseif (option_xcp_mode == "qw") then	-- xcp runs to area, then does automatic quick where.
+				elseif (CONFIG_xcp_mode == "qw") then	-- xcp runs to area, then does automatic quick where.
 					local func = function() Execute("x_qw " .. localItem.mob) end
 					execute_in_area("goto_list_item_area", localItem.arid, func)
-				elseif (option_xcp_mode == "off") then	-- xcp runs to area, but takes no other action.
+				elseif (CONFIG_xcp_mode == "off") then	-- xcp runs to area, but takes no other action.
 					ColourNote("#FF5000", "", "Xcp mode is off - no additional action")
 					print("")
 				end
@@ -1289,7 +1249,6 @@ MAPPER EXTENDER USAGE:
 		"INNER JOIN areas a ON a.uid = r.area " ..
 		"WHERE r.area like %s OR a.name like %s " ..
 		"ORDER BY r.name "
-	
 	function xrun_to(name, line, wildcards)
 		local destination = wildcards.loc
 		local worldPath = GetInfo(66)..Trim(sanitize_filename(WorldName()))		-- finds your mapper database
@@ -1306,19 +1265,20 @@ MAPPER EXTENDER USAGE:
 	end
 
 	function xset_pk(name, line, wildcards)
-		if (showPK == "true") then
-			showPK = "false"
-		else
-			showPK = "true"
-		end
-		SetVariable("showPK", showPK)
-		ColourNote("#FF5000", "", "Show PK room flag : " .. showPK)
+	--	if (showPK == "true") then
+	--		showPK = "false"
+	--	else
+	--		showPK = "true"
+	--	end
+	--	SetVariable("showPK", showPK)
+	--	ColourNote("#FF5000", "", "Show PK room flag : " .. showPK)
 	end
 
 	function xset_to_mark(name, line, wildcards)
-		areaStartRooms[currentRoom.arid] = { areaname = currentRoom.areaname, roomid = currentRoom.rmid }
+		areaStartRooms[currentRoom.arid] = { areaname = "temp", roomid = currentRoom.rmid }
 		ColourNote("#FF5000", "", "\n" .. currentRoom.rmid .. " set as starting room for " .. currentRoom.arid .. "\n")
 		SetVariable("areaStartRooms", serialize.save_simple(areaStartRooms))
+		tprint(areaStartRooms)
 	end
 	
 	function get_start_room(area_id)
@@ -1369,7 +1329,7 @@ MAPPER EXTENDER USAGE:
 			sql = sql .. " WHERE b.uid = " .. fixsql(roomid)
 		end
 		sql = sql .. " ORDER BY b.uid "
-		DebugNote(sql)
+		--print(sql)	-- to see what sql statement is being executed if needs be
 		local index = 0
 		if (arid ~= nil) then
 			Simulate("\nNotes for " .. getAreaName(arid) .. "\n")
@@ -1391,20 +1351,6 @@ MAPPER EXTENDER USAGE:
 		end
 	end
 
-	function getRoomByMob(mobName)
-		local worldPath = GetInfo(66)..Trim(sanitize_filename(WorldName()))
-		local db = assert(sqlite3.open(worldPath .. ".db"))
-		local sql =  "SELECT roomid, mobname, count "
-		sql = sql .. "FROM mobs "
-		sql = sql .. "WHERE mobname = %s "
-		sql = sql .. "ORDER BY count desc "
-		for row in db:nrows(string.format (sql, fixsql(uid))) do
-			db:close_vm()
-			return row.name
-		end
-		db:close_vm()
-	end
-
 	function getAreaName(uid)
 		local worldPath = GetInfo(66)..Trim(sanitize_filename(WorldName()))
 		local db = assert(sqlite3.open(worldPath .. ".db"))
@@ -1423,9 +1369,7 @@ MAPPER EXTENDER USAGE:
 		local sql =  "SELECT uid FROM areas WHERE name = %s order by uid "
 		local areas = {}
 		local index = 0
-		DebugNote("getAreaUid:" .. fixsql(name))
 		for row in db:nrows(string.format (sql, fixsql(name))) do
-			DebugNote(row.uid .. ":" .. name)
 			index = index + 1
 			areas[index] = {uid = row.uid, name = name}
 		end
@@ -1459,7 +1403,6 @@ MAPPER EXTENDER USAGE:
 		"ORDER BY Area, DisplayOrder DESC "
 	
 	function search_rooms(room, searchType, fullMobName)
-		DebugNote("search_rooms(" .. room .."," .. searchType .. "," .. fullMobName .. ")")
 		if (room == nil or room == "") then
 			Note("map_area() error : room is not known")
 			return
@@ -1497,7 +1440,6 @@ MAPPER EXTENDER USAGE:
 			fixsql(area_id), 
 			fixsql(area_id), 
 			fixsql(area_id))
-		DebugNote(select)
 		local worldPath = GetInfo(66)..Trim(sanitize_filename(WorldName()))
 		local db = assert(sqlite3.open(worldPath .. ".db"))
 		local results = {}
@@ -1505,7 +1447,7 @@ MAPPER EXTENDER USAGE:
 		for row in db:nrows(select) do
 			local id = (tonumber(row.uid) or -1)	-- sanitize text room ids for "unmappable" rooms that are now being mapped
 			results[#results + 1] = { 
-				uid = id, 
+				rmid = id, 
 				name = row.name,
 				info = row.info,
 				area = row.area_name,
@@ -1516,71 +1458,44 @@ MAPPER EXTENDER USAGE:
 			end
 		end   -- finding rooms
 		db:close_vm()
-		local mob_mapping = {}
-		local freq_total = mob_mapping[-1] or 0
-		DebugNote("freq_total:" .. freq_total)
-		for i,v in ipairs (results) do	-- add mob to room mapping
-			local freq = mob_mapping[v.uid]
-			if (freq ~= nil) then
-				v.freq = math.floor((freq / freq_total) * 100)
-			else
-				v.freq = 0
-			end	
-		end
 		print_rooms(results)
-	end
-	
-	function IPRINT_ROOMS(json)
-		-- load serialize.save_simple data
-		luastmt = "gPrintRooms = " .. json
-		assert (loadstring (luastmt or "")) ()
-		print_rooms(gPrintRooms)
 	end
 
 	function print_rooms(results)	-- Display list of 'go' links from hunt-trick, quick-where, etc.
 		gotoList = {}
 		mapper_area_index = 0
 		local last_area = ""
-		DebugTPrint("results", results)
-		if (USER_show_help == "true") then
+		if (CONFIG_show_help == "true") then
 			ColourNote("Gray", "", "\nIndex    Location     (uid)")
 			ColourNote("Gray", "", "------------------------------------------------------------")
 		end
 		for i,v in ipairs (results) do
-			DebugNote("area: " .. v.arid )
 			if (last_area ~= v.arid) then
 				if (mapper_area_index == 0) then
 					local areaLine = string.format("~~~ %2d   %s", mapper_area_index, v.arid)
-					Hyperlink("go " .. mapper_area_index, areaLine, "go to area " .. v.arid, "silver", "black", 0)
+					Hyperlink("go " .. mapper_area_index, areaLine, "go to area " .. v.arid, "silver", "", 0)
 					gotoList[mapper_area_index] = v.arid
 					mapper_area_index = mapper_area_index + 1
 				else
 					local areaLine = string.format("~~~   %s", v.arid)
-					Hyperlink("xrt " .. v.arid, areaLine, "go to area " .. v.arid, "silver", "black", 0)
+					Hyperlink("xrt " .. v.arid, areaLine, "go to area " .. v.arid, "silver", "", 0)
 				end				
 				print("")
 				last_area = v.arid				
 			end
+			
 			local line1 = string.format("~~~ %2d   ", mapper_area_index)
-			Hyperlink("go " .. mapper_area_index, line1, "go to item " .. mapper_area_index, "lightblue", "black", 0)
-		--	-- mob name? 
-		--	if (v.mobname ~= nil) then
-		--		local mobline = padRight(v.mobname .. " ", 20, " ")
-		--		Hyperlink("go " .. mapper_area_index, mobline, "2go to item " .. mapper_area_index, "snow", "black", 0)
-		--	end
-			local line2 = string.format("%s  (%s) ", padRight(string.gsub(v.name, "@[a-zA-Z]", ""), 20, " "), v.uid)
-			Hyperlink("go " .. mapper_area_index, line2, "go to item " .. mapper_area_index, "lightblue", "black", 0)
-			-- mob to room
-			if (v.freq > 0) then
-				ColourTell ("#FF5000", "black", " (" .. v.freq .. "%) ")
-			end
-			Hyperlink("mapper where " .. v.uid, "   {?}", "click for speedwalk to this room", "LightSteelBlue ", "black", 0)
-			gotoList[mapper_area_index] = v.uid
+			Hyperlink("go " .. mapper_area_index, line1, "go to item " .. mapper_area_index, "lightblue", "", 0)
+			
+			local line2 = string.format("%s  (%s) ", padRight(string.gsub(v.name, "@[a-zA-Z]", ""), 20, " "), v.rmid)
+			Hyperlink("go " .. mapper_area_index, line2, "go to item " .. mapper_area_index, "lightblue", "", 0)
+			Hyperlink("mapper where " .. v.rmid, "   {?}", "click for speedwalk to this room", "LightSteelBlue ", "", 0)
+			gotoList[mapper_area_index] = v.rmid
 			print("")
 			mapper_area_index = mapper_area_index + 1
 		end
 		if (mapper_area_index == 0) then ColourNote("#FF5000", "", "No matching rooms found.") end
-		if (USER_show_help == "true") then
+		if (CONFIG_show_help == "true") then
 			ColourNote("Gray", "", "------------------------------------------------------------")
 			ColourNote("Gray", "", "Type 'go <index>' or click link to go to that room.")
 		end
@@ -1589,20 +1504,30 @@ MAPPER EXTENDER USAGE:
 
 	local cp_simulate_toggle = "0"
 	function cp_simulate(name, line, wildcards)
+		local time_check = os.clock()					-- prevent double cp checks from different plugins
+		if ((time_check - last_cp_check) < 1.0) then
+			return
+		end
+		last_cp_check = time_check
+		cp_check_list = {}
+		cp_check_index = 1
+		cpIndex = 1
+		EnableTrigger("trg_cp_check_line", true)
 		Simulate("\n")	
-		if (cp_simulate_toggle == "0") then
+		--if (cp_simulate_toggle == "0") then
+			Simulate("You still have to kill * A test mob (A Cold Path)\n")	--dead
 			Simulate("You still have to kill * Isscheburqua (Insanitaria)\n")
 			Simulate("You still have to kill * a rook citizen (Avian Kingdom)\n")
 			Simulate("You still have to kill * Lea, the farmer's daughter (Farmyard)\n")
 			Simulate("You still have to kill * a rook citizen (Nesting Home)\n")
 			Simulate("You still have to kill * a demon school student (The School of Horror)\n")
 			Simulate("You still have to kill * a hookle fish (Black Lagoon)\n")
-			Simulate("You still have to kill * Harry (Unknown Tower - Dead)\n")
+			Simulate("You still have to kill * Harry (Unknown Tower)\n")		--dead
 			Simulate("You still have to kill * a former court jester (The Labyrinth)\n")
-			Simulate("You still have to kill * Parent (The Kitchen)\n")
+			Simulate("You still have to kill * Parent (A Cold Path - Dead)\n")
 			Simulate("You still have to kill * a wealth redistribution specialist (Empyrean, Streets of Downfall)\n")
 			Simulate("You still have to kill * the reaching thorns (Eternal Autumn)\n")
-			Simulate("You still have to kill * Redtooth (Mossflower Wood - Dead)\n")
+			Simulate("You still have to kill * Redtooth (Mossflower Wood - Dead)\n")	--dead
 			Simulate("You still have to kill * Castle Guard (Rebellion of the Nix)\n")
 			Simulate("You still have to kill * Jules (The Amazon Nation)\n")
 			Simulate("You still have to kill * an earth fiend (The Broken Halls of Horath)\n")
@@ -1610,24 +1535,25 @@ MAPPER EXTENDER USAGE:
 			Simulate("You still have to kill * Elfgar Sous-Fled (Some Place)\n")
 			Simulate("You still have to kill * the heart of a sandstorm (Living Mines of Dak'Tai)\n")
 			cp_simulate_toggle = "1"
-		else
-			Simulate("You still have to kill * a former court jester (The Labyrinth)\n")
-			Simulate("You still have to kill * the heart of a sandstorm (Buried in the Great Desert's unrelenting dunes)\n")
-			Simulate("You still have to kill * Parent (The Kitchen)\n")
-			Simulate("You still have to kill * a rhino seraph (A Corridor of Cinnamon and Silver)\n")
-			Simulate("You still have to kill * A sprite prisoner (A cell)\n")
+		--else
+			--Simulate("You still have to kill * a former court jester (The Labyrinth)\n")
+			--Simulate("You still have to kill * the heart of a sandstorm (Buried in the Great Desert's unrelenting dunes)\n")
+			--Simulate("You still have to kill * Parent (The Kitchen)\n")
+			--Simulate("You still have to kill * a rhino seraph (A Corridor of Cinnamon and Silver)\n")
+			--Simulate("You still have to kill * A sprite prisoner (A cell)\n")
 		
-			cp_simulate_toggle = "0"
-		end
+		--	cp_simulate_toggle = "0"
+		--end
 		Simulate("Note: Dead means that the target is dead, not that you have killed it.\n")
 		Simulate("\n")
 		Simulate("You have 6 days, 23 hours and 56 minutes left to finish this campaign.\n")
-		Simulate("\n")	
+		Simulate("\n")
+		
 	end
 
 	------ Execute in Area ------
 	local execute_in_area_array = {}
-	function execute_in_area(id, arid, functionPointer)
+	function execute_in_area(id, arid, functionPointer)		-- see example of how to use in function goto_room
 		execute_in_area_array[id] = { arid = arid, func = functionPointer, index = 0, active = true, lastState = "3", standIndex = 0 }	--lastState = 3 = standing
 		--tprint(execute_in_area_array)																										--standIndex = # of stands in a row (?)
 		EnableTimer("execute_in_area_timer", true)
@@ -1637,26 +1563,21 @@ MAPPER EXTENDER USAGE:
 		local localRoom = currentRoom
 		local localState = char_state or "1"
 		if (localRoom == nil) then		-- thread safety
-			DebugNote("Unknown Room")
 			return
 		end
 		local isActive = false
 		for index, v in pairs(execute_in_area_array) do
-			DebugNote("loop - " .. index)
 			if (v.active == true) then
 				v.index = v.index + 1
 				if (v.index > 100) then
 					v.active = false
 					print("** aborting quickwhere timer for " .. index .. ", took too long to get to destination")
 				else
-					DebugNote("state:" .. localState .. ",:" .. v.arid .. "==" .. localRoom.arid)
 					if ((localState == "3" and v.lastState == "3") and v.arid == localRoom.arid) then
 						v.index = v.index + 1	-- skip first timer tick
 						v.standIndex = v.standIndex + 1
 						if (v.standIndex < 2) then
-							DebugNote("skip - index:" .. v.index)
 						else
-							DebugNote("executing - index:" .. v.index)
 							v.func()
 							v.active = false						
 						end
@@ -1671,23 +1592,20 @@ MAPPER EXTENDER USAGE:
 			end
 		end
 		if (isActive == false) then		-- no timer items active.. disable
-			DebugNote("disable timer")
 			EnableTimer("execute_in_area_timer", false)
 		end
 	end
 
 	----------- EXTERNAL CALLOUTS -----------------------------
 	function remote_guess_mob_name(mobName, arid, broadcast)
-		DebugNote("remote_guess_mob_name call:" .. mobName .. ":" .. arid)
 		local rc, mobGuess, subMob = CallPlugin(
 			plugin_id_search_destroy, 
 			"IGuessMobNameBroadcast", 
 			mobName,
 			arid)
 		if (subMob ~= nil) then
-			DebugNote(subMob)
+			--DebugNote(subMob)
 		end
-		DebugNote("remote_guess_mob_name return:" .. mobGuess)
 		return mobGuess
 	end
 
@@ -1763,23 +1681,50 @@ MAPPER EXTENDER USAGE:
 		return result
 	end
 
-	function set_check_vidblain(name, line, wildcards)
-	  if (USER_check_vidblain == "true") then
-		USER_check_vidblain = "false"
-	  else
-		USER_check_vidblain = "true"
-	  end
-	  local msg = "off"
-	  if (USER_check_vidblain == "true") then
-		msg = "on"
-	  end
-	  ColourNote ("#FF5000", "", "No-portal vidblain assistance: " .. msg)
+	function xset_vidblain_onoff(name, line, wildcards)
+		local x = CONFIG_xset_vidblain
+		x = (x == "on") and "off" or "on"
+		CONFIG_xset_vidblain = x
+		SetVariable("mcvar_xset_vidblain_onoff", x)
+		ColourTell ("#FF5000", "", "\nNo-portal vidblain assistance: ",
+					"#40C040", "", x)
+		print("\n")
 	end
 
+	local xset_vidblain_level = tonumber(GetVariable("mcvar_xset_vidblain_level")) or 300
+	function xset_vidblain_setlevel(name, line, wildcards)
+		local x = tonumber(wildcards.level)
+		xset_vidblain_level = x
+		SetVariable("mcvar_xset_vidblainlevel", x)
+		ColourTell ("#FF5000", "", "\n'xset vidblain' cutoff set to level ", 
+					"#40C040", "", x)
+		print("\n")
+	end
+
+	local is_vidblain_area_sql = "SELECT area " .. "FROM rooms " .. "WHERE uid = %s "
+	function is_vidblain_area(roomid)
+		if (CONFIG_xset_vidblain == "off") then	return false end
+		local level = tonumber(gmcp("char.status.level")) + 10 * tonumber(gmcp("char.base.tier"))
+		if (level >= xset_vidblain_level) then return false	end
+		
+		local worldPath = GetInfo(66) .. Trim(sanitize_filename(WorldName()))
+		local db = assert(sqlite3.open(worldPath .. ".db"))
+		local select = string.format (is_vidblain_area_sql, fixsql(roomid))
+		for row in db:nrows(select) do
+			local a = row.area
+			if (a == "darklight" or a == "imperial" or a == "omentor" or a == "sendhian" or a == "vidblain") then
+				db:close_vm()
+				return true
+			end
+		end		
+		db:close_vm()
+		return false
+	end
+	
 	function OnPluginSaveState()
-		SetVariable("XRunToCheckVidblain", USER_check_vidblain)
+		--SetVariable("mcvar_xset_vidblain_onoff", CONFIG_xset_vidblain)
 	end
-
+	
 	--------- Sql Execution ------------
 	function RunSql(name, line, wildcards)
 		local worldPath = GetInfo(66)..Trim(sanitize_filename(WorldName()))
@@ -1816,32 +1761,18 @@ MAPPER EXTENDER USAGE:
 		Note("Ext debug:" .. showDebug)
 	end	
 
-	function ext_print(name, line, wildcards)
-		print(wildcards.data)
-		if wildcards.data == "area_range" then
-			tprint(area_range)
-		elseif wildcards.data == "areaIndex" then
-			tprint(areaIndex)
-		elseif wildcards.data == "areaStartRooms" then
-			tprint(areaStartRooms)
-		elseif wildcards.data == "cpList" then
-			tprint(cpList)
-		else
-			print("Ext print: Option not available.")
-		end
-	end
-	
 	function DebugNote(text)
 		if (showDebug == 1) then
 			Note("Extender ~ " .. text)
 		end
 	end
 
-	function DebugTPrint(title, obj)
-		if (showDebug == 1) then
-			DebugNote(title .. " : " .. serialize.save_simple(obj))
-		end
-	end
+--	function DebugTPrint(title, obj)
+--		if (showDebug == 1) then
+--			DebugNote(title .. " : " .. serialize.save_simple(obj))
+--		end
+--	end
+
 	-------------- INSTALL MESSAGE ------------------
 	function InstallMessage()
 		ColourNote("MediumSeaGreen", "", "\n+=======================================================+")
@@ -1851,4 +1782,5 @@ MAPPER EXTENDER USAGE:
 	InstallMessage()
 ]]>
 </script>
+
 </muclient>
