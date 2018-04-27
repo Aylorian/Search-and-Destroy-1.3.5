@@ -7,10 +7,8 @@ Happy new year, ninjas and other fans of mine!  I'm happy to report that 1.3.5 i
     eliminated, further improving performance and reducing ambiguity.  This should finally put an
     end to most of the display and link-related problems that have plagued S&D since the beginning.
     
-    As of 24 April there is still an intermittent crash related to the target list builder and room
-    cp's.  It happened to me once but by the time I reloaded the plugin with debug etc. something
-    had changed and would no longer crash.  Reports from others basically the same.  When I find it
-    I'll fix it.
+    As of April 27 the recent crashes and a few other issues discovered during the investigation
+    should be fixed.  I guess we'll find out.  Let me know if not.
   
   Additional process improvements, bug fixes, and other changes include:
  
