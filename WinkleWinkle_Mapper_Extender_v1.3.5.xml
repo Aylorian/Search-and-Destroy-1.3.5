@@ -816,7 +816,7 @@ MAPPER EXTENDER USAGE:
 	end
 
 	function area_index_end(name, line, wildcards)
-		tprint(area_range)
+		--tprint(area_range)
 		ColourNote("#FF5000", "", "\n*** Area levels indexed!")
 		DoAfterSpecial(1.0, "xset resume page size", sendto.execute)
 		Execute("cp info")
