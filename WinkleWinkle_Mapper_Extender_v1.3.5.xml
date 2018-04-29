@@ -400,8 +400,8 @@ MAPPER EXTENDER USAGE:
 --	   *2.0   - Future fundamental rewrite/reorganization of S&D.
 -- Happy hunting, ninjas.
 
-	require "serialize"
 	require "gmcphelper"
+	require "serialize"
 	require "tprint"
 	require "wait"
 
@@ -801,8 +801,11 @@ MAPPER EXTENDER USAGE:
 		local minLvl = tonumber(Trim(wildcards.min)) or 1
 		local maxLvl = tonumber(Trim(wildcards.max)) or 201
 		local levelLock = tonumber(Trim(wildcards.lock)) or 0
-		if areaDefaultStartRooms[arid] then
-			if (areaDefaultStartRooms[arid].noquest) then
+		if areaDefaultStartRooms[arid] then		     
+			if (arid == "sahuagin") then areaName = "The Abyssal Caverns of Sahuagin"
+			elseif (arid == "darkside") then areaName = "The Darkside of the Fractured Lands"
+			end
+			if (areaDefaultStartRooms[arid].noquest == true) then
 				-- do nothing, we don't want to add noquest areas to the index
 			else
 				area_range[areaName] = { arid = arid, min = minLvl, max = maxLvl, lock = levelLock }
@@ -813,6 +816,7 @@ MAPPER EXTENDER USAGE:
 	end
 
 	function area_index_end(name, line, wildcards)
+		tprint(area_range)
 		ColourNote("#FF5000", "", "\n*** Area levels indexed!")
 		DoAfterSpecial(1.0, "xset resume page size", sendto.execute)
 		Execute("cp info")
@@ -920,6 +924,7 @@ MAPPER EXTENDER USAGE:
 		cp_check_list = {}
 		cp_check_index = 1
 		cpIndex = 1
+		BroadcastPlugin(680, "0")
 		Send("cp ch")
 	end
 	
@@ -944,7 +949,7 @@ MAPPER EXTENDER USAGE:
 			" WHERE name = %s " ..
 			" ORDER BY arid ASC "
 	local sql_build_room_target =
-			" SELECT r.uid as roomid, r.name as roomName, a.uid as arid, a.name as areaName, 'room' as type, info " ..
+			" SELECT r.uid as roomid, r.name as roomName, a.uid as arid, a.name as areaName, 'room' as type " ..
 			" FROM rooms r " ..
 			" INNER JOIN areas a ON r.area = a.uid " ..
 			" WHERE r.name = %s "
@@ -986,60 +991,66 @@ MAPPER EXTENDER USAGE:
 				cp_target_list[row_index] = {mob = v.mob, location = v.loc, is_dead = v.is_dead, type = "unknown_area", ord = row_index}
 			end
 		end
+		db:close_vm()
 	end
 
 	function build_room_cp_target(t)
 		local worldPath = GetInfo(66)..Trim(sanitize_filename(WorldName()))
 		local db = assert(sqlite3.open(worldPath .. ".db"))
 		local row_index = 0
-		local lastMobSignature = ""
+		
 		for i,v in ipairs (t) do
 			local row_count = 0
-			local select = string.format(sql_build_room_target, fixsql(v.loc), fixsql(v.loc))
+			local select = string.format(sql_build_room_target, fixsql(v.loc))
+			local lastMobSignature = ""
 			for row in db:nrows(select) do
-				local min_lvl = (area_range[row.areaName].min) or 1
-				local max_lvl = (area_range[row.areaName].max) or 300
-				row_count = row_count + 1
-				local mobSignature = row.areaName .. "|" .. v.mob
-				if (lastMobSignature ~= mobSignature) then
-					if (cp_level_taken >= (min_lvl + 0)) and (cp_level_taken <= (max_lvl + 30)) then
-						row_index = row_index + 1
-						cp_target_list[row_index] = {
-							mob = v.mob,
-							roomid = row.roomid,
-							arid = row.arid,
-							roomName = row.roomName,
-							is_dead = v.is_dead,
-							minlvl = min_lvl,
-							maxlvl = max_lvl,
-							info = row.info,
-							type = ((v.is_dead == "no") and "room" or "area"),	-- deals with dead mobs when area contains roomnames same as area name e.g. Aardington Estate
-							ord = row_index	}
-					else	-- area containing roomname is outside level ranges
-						local link = string.format("Ignoring due to level : %s in '%s' (%s) [%s-%s]", v.mob, row.roomName, row.arid, min_lvl, max_lvl)
-						Hyperlink("xm move " .. row.roomid, link, "Move to room " .. row.roomid, "Khaki", "", 0)
-						print("")
+					if (area_range[row.areaName] == nil) then	-- noquest areas never contain targets and are excluded from results 
+					else
+						local min_lvl = (area_range[row.areaName].min) or 1
+						local max_lvl = (area_range[row.areaName].max) or 300
+						row_count = row_count + 1
+						local mobSignature = row.areaName .. "|" .. v.mob
+						if (lastMobSignature ~= mobSignature) then
+							if (cp_level_taken >= (min_lvl + 0)) and (cp_level_taken <= (max_lvl + 30)) then	-- filter results outside sensible level range
+								row_index = row_index + 1
+								cp_target_list[row_index] = {
+									mob = v.mob,
+									roomid = row.roomid,
+									arid = row.arid,
+									roomName = row.roomName,
+									is_dead = v.is_dead,
+									minlvl = min_lvl,
+									maxlvl = max_lvl,
+									--info = row.info,
+									type = ((v.is_dead == "no") and "room" or "area"),	-- deals with dead mobs when area contains roomnames same as area name e.g. Aardington Estate
+									ord = row_index	}
+							else	-- area containing roomname is outside level ranges
+								local link = string.format("Ignoring due to level : %s in '%s' (%s) [%s-%s]", v.mob, row.roomName, row.arid, min_lvl, max_lvl)
+								Hyperlink("xm move " .. row.roomid, link, "Move to room " .. row.roomid, "Khaki", "", 0)
+								print("")
+							end
+						end
+						lastMobSignature = mobSignature
 					end
-				end
-				lastMobSignature = mobSignature
 			end
 			if (row_count == 0) then
-				if (v.is_dead == "yes") then
+				if (v.is_dead == "yes") then	-- mob is dead
 					local select = string.format(sql_build_area_target, fixsql(v.loc))
-					for row in db:nrows(select) do
+					for row in db:nrows(select) do	-- mob is dead but the location is known
 						row_index = row_index + 1
 						cp_target_list[row_index] = {mob = v.mob, arid = row.arid, is_dead = "yes", type = "area", ord = row_index}
 					end
-					if row_count == 0 then
+					if row_count == 0 then	-- mob is dead and the location is unknown
 						row_index = row_index + 1
-						cp_target_list[row_index] = {mob = v.mob, location = v.loc, is_dead = "yes", type = "unknown_room", ord = row_index}
+						cp_target_list[row_index] = {mob = v.mob, location = v.loc, is_dead = "yes", type = "unknown_area", ord = row_index}
 					end
-				else	-- room wasn't found in mapper db
+				else	-- mob is alive, but no location is known
 					row_index = row_index + 1
 					cp_target_list[row_index] = {mob = v.mob, location = v.loc, is_dead = v.is_dead, type = "unknown_room", ord = row_index}
 				end
 			end
 		end
+		db:close_vm()
 	end
 	
 	function print_cp_target_links(list, command)		-- show the list of target links from cp check (not the same as 'go' links)
@@ -1081,7 +1092,7 @@ MAPPER EXTENDER USAGE:
 				Hyperlink(" ", link, linkhelp, color, "", 0)
 			elseif (v.type == "unknown_room") then
 				link = string.format(" %2d  %s - room '%s' not in mapper db", padRight(i, 4, " "), padRight(mobText, 30, " "), v.location)
-				linkhelp = "Room not found in mapper database."
+				linkhelp = "Room not found in mapper database"
 				color = ((is_dead == "yes") and "#900000" or "#FF0000")	-- dark red, bright red
 				Hyperlink(" ", link, linkhelp, color, "", 0)
 			end		
@@ -1782,5 +1793,6 @@ MAPPER EXTENDER USAGE:
 	InstallMessage()
 ]]>
 </script>
+
 
 </muclient>
