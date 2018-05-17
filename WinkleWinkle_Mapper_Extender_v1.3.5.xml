@@ -1289,7 +1289,7 @@ MAPPER EXTENDER USAGE:
 		areaStartRooms[currentRoom.arid] = { areaname = "temp", roomid = currentRoom.rmid }
 		ColourNote("#FF5000", "", "\n" .. currentRoom.rmid .. " set as starting room for " .. currentRoom.arid .. "\n")
 		SetVariable("areaStartRooms", serialize.save_simple(areaStartRooms))
-		tprint(areaStartRooms)
+		--tprint(areaStartRooms)
 	end
 	
 	function get_start_room(area_id)
