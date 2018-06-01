@@ -32,7 +32,6 @@ glitches and crashes fixed. I'm sure it can still crash in other ways, but if it
 and not because S&D is doing something to your computer (as certain implementors would have you believe).
 
 I sincerely regret any inconvenience that my being frozen has caused, and look forward to continuing active
-work on S&D when I return.  I hope this clears up any concerns or worries that anyone might have, given the comments that
-have been made In the meantime, any questions, concerns, comments, or other messages should be directed 
-to my email, which can be found in my in-game finger info.  See you all after 19:42 (Aardwolf server time) on Friday, 
+work on S&D when I return.  I hope this clears up any concerns or worries that anyone might have, given some of the 
+comments and insinuations that have been made.  In the meantime, any questions, concerns, comments, or other messages should be directed to my email, which can be found in my in-game finger info.  See you all after 19:42 (Aardwolf server time) on Friday, 
 10 August 2018.
