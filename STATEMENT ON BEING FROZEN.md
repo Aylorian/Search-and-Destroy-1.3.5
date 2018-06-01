@@ -13,7 +13,7 @@ still responsible for any modifications they make to the plugins (e.g. automatio
 from that.  If you plan on modifying your copy of S&D, please check with the immortals to confirm that the changes
 you're making are actually legal.
 
--S&D is safe to run.  The only data it accesses is your mapper DB and the plugin state files.  It does not
+- S&D is safe to run.  The only data it accesses is your mapper DB and the plugin state files.  It does not
 access any other data on your system, does not contain malicious code of any kind, does not log your commands
 or keystrokes, and all of S&D's code is available here on Github.  Feel free to inspect it at any time.  There 
 are plenty of coders on Aardwolf who are better than I am, and to date not one of them has raised any trust 
