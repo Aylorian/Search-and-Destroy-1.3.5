@@ -1,6 +1,6 @@
 # Statement on being frozen - 1 Jun 2018
 
-At 5:06 AM (Aardwolf server time) on Saturday, 12 May 2018, I was frozen for inappropriate conduct towards
+At 05:06 (Aardwolf server time) on Saturday, 12 May 2018, I was frozen for inappropriate conduct towards
 an immortal.  The length of the freeze is about 3 months.  The incident was completely my fault and the punishment
 is fair.  This posting is intended to clear up any concerns regarding Search and Destroy that people may have.
 
@@ -31,7 +31,8 @@ That being said, S&D 1.3.5 should be pretty stable at this point, with most of t
 glitches and crashes fixed. I'm sure it can still crash in other ways, but if it does, it's due to a coding error (bug) 
 and not because S&D is doing something to your computer (as certain implementors would have you believe).
 
-I sincerely regret any user inconvenience that my being frozen has caused, and look forward to continuing active
+I sincerely regret any inconvenience that my being frozen has caused, and look forward to continuing active
 work on S&D when I return.  I hope this clears up any concerns or worries that anyone might have, given the comments that
 have been made In the meantime, any questions, concerns, comments, or other messages should be directed 
-to my email, which can be found in my in-game finger info.  See you all August 10.
+to my email, which can be found in my in-game finger info.  See you all after 19:42 (Aardwolf server time) on Friday, 
+10 August 2018.
