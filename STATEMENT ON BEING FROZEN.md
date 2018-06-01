@@ -5,7 +5,7 @@ an immortal.  The length of the freeze is about 3 months.  The incident was comp
 is fair.  This posting is intended to clear up any concerns regarding Search and Destroy that people may have.
 
 - Search and Destroy has nothing to do with my being frozen whatsoever.  I'm frozen for harassing an imm, and
-that is all.  While this behavior is inappropriate, it is not an integrity violation or other violation of user
+that is all.  While that behavior is inappropriate, it is not an integrity violation or other violation of user
 trust, and should not be considered as such.
 
 - Search and Destroy is still legal.  As downloaded from my Github, it is not considered a bot.  Users are
@@ -20,17 +20,18 @@ are plenty of coders on Aardwolf who are better than I am, and to date not one o
 issues at all.  
 
 - Unless details, evidence, and/or reasoning are provided, then any claim that S&D is unsafe, and/or any comment like 
-"I wouldn't trust code written by a frozen player" is a scare tactic (and a rather transparent one, at that) intended
-to discourage people from using S&D and should be disregarded accordingly.  I guess if you can't convince people it's
-a bot then scaring them into thinking it's malware is a logical next step, but it isn't malware any more than it's a bot.
-If anyone believes otherwise, it's on them to prove it.  I won't be holding my breath, though.
+"I wouldn't trust code written by a frozen player" is a scare tactic (a rather transparent one, at that) intended
+to discourage people from using S&D and these comments should be disregarded accordingly.  I guess if you can't convince 
+people it's a bot then scaring them into thinking it's malware is a logical next step.  Unfortunately, examining the code
+will show that S&D isn't malware any more than it's a bot.  If anyone believes otherwise, it's on them to prove it.  I won't be holding my breath, though.
 
-- I very likely won't update S&D while frozen because of the difficulty with testing that it causes.  I won't be
-lurking on an alt or talking to anyone in-game while frozen — I feel it would be inappropriate given the circumstances.  S&D 1.3.5
-should be pretty stable at this point, with most of the GUI and other list/display related glitches and crashes fixed.
-I'm sure it can still crash in other ways, but if it does, it's due to a coding error (bug) and not because S&D is doing
-something to your computer (as certain implementors would have you believe).
+- I very likely won't update S&D while frozen because of the difficulty with testing anything.  I won't be
+lurking on an alt or talking to anyone in-game while frozen — I think it would be problematic given the circumstances.
+That being said, S&D 1.3.5 should be pretty stable at this point, with most of the GUI and other list/display related 
+glitches and crashes fixed. I'm sure it can still crash in other ways, but if it does, it's due to a coding error (bug) 
+and not because S&D is doing something to your computer (as certain implementors would have you believe).
 
-- I sincerely regret any user inconvenience that my being frozen has caused, and look forward to continuing active
-work on S&D when I return.  In the meantime, any questions, concerns, comments, or other messages should be directed 
+I sincerely regret any user inconvenience that my being frozen has caused, and look forward to continuing active
+work on S&D when I return.  I hope this clears up any concerns or worries that anyone might have, given the comments that
+have been made In the meantime, any questions, concerns, comments, or other messages should be directed 
 to my email, which can be found in my in-game finger info.  See you all August 10.
