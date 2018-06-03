@@ -8,7 +8,7 @@ is fair.  This posting is intended to clear up any concerns regarding Search and
 that is all.  While that behavior is inappropriate, it is not an integrity violation or other violation of user
 trust, and should not be considered as such.
 
-- Search and Destroy is still legal.  As downloaded from my Github, it is not considered a bot.  Users are
+- Search and Destroy remains legal.  As downloaded from my Github, it is not considered a bot.  Users are
 still responsible for any modifications they make to the plugins (e.g. automation) and any consequences arising
 from that.  If you plan on modifying your copy of S&D, please check with the immortals to confirm that the changes
 you're making are actually legal.
@@ -25,7 +25,7 @@ to discourage people from using S&D and these comments should be disregarded acc
 people it's a bot then scaring them into thinking it's malware is a logical next step.  Unfortunately, examining the code
 will show that S&D isn't malware any more than it's a bot.  If anyone believes otherwise, it's on them to prove it.  I won't be holding my breath, though.
 
-- I very likely won't update S&D while frozen because of the difficulty with testing anything.  I won't be
+- I very likely won't update S&D while frozen because of the difficulty with testing things.  I won't be
 lurking on an alt or talking to anyone in-game while frozen — I think it would be problematic given the circumstances.
 That being said, S&D 1.3.5 should be pretty stable at this point, with most of the GUI and other list/display related 
 glitches and crashes fixed. I'm sure it can still crash in other ways, but if it does, it's due to a coding error (bug) 
